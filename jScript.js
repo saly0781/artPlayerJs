@@ -1,4 +1,4 @@
-    Artplayer.NOTICE_TIME = 5000;
+Artplayer.NOTICE_TIME = 5000;
         const controlsPlayAndPauseElement = `
                         <div id="playbackControlsContainer">
                             <button class="control-button" id="rewindButton" aria-label="Rewind 30 seconds" style="height: 70%;">
@@ -814,16 +814,16 @@
             }
         }
 
-        async function initializeApp() {
+        async function initializeApp(optionData) {
             const loadingOverlay = document.getElementById('loading-overlay');
             try {
                 const response = await fetch("https://dataapis.wixsite.com/platformdata/_functions/cinemaData", {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        "MovieId": "6140f361-3a6e-4cbb-b7a3-6d81c1eca4c6",
-                        "userId": "1441537e-ef35-4ca8-b9df-6ddbd7b5678c",
-                        "source": "", "addedToList": "added", "deviceType": "IOS"
+                        "MovieId": optionData.movieId, //"6140f361-3a6e-4cbb-b7a3-6d81c1eca4c6",
+                        "userId": optionData.userId, //"1441537e-ef35-4ca8-b9df-6ddbd7b5678c",
+                        "deviceType": "IOS"
                     })
                 });
                 if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
