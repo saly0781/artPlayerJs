@@ -1403,4 +1403,4 @@
         }
 
         // Start the application
-        initializeApp();
+        //initializeApp();
