@@ -1403,4 +1403,4 @@ Artplayer.NOTICE_TIME = 5000;
         }
 
         // Start the application
-        //initializeApp();
+        //initializeApp()
