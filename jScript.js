@@ -927,7 +927,7 @@ Artplayer.NOTICE_TIME = 5000;
 
                 var art = new Artplayer({
                     container: '.artplayer-app', url: initialUrl, poster: currentMovieData.longCover,
-                    isLive: false, muted: false, autoplay: false, pip: false, autoSize: false, autoMini: true,
+                    isLive: false, muted: false, autoplay: true, pip: false, autoSize: true, autoMini: true,
                     screenshot: false, setting: false, loop: false, autoPlayback: false, autoOrientation: true,
                     antiOverlap: true, flip: false, playbackRate: false, aspectRatio: true, miniProgressBar: true,
                     backdrop: true, playsInline: true, airplay: false, fullscreenWeb: false, theme: "#1FDF67",
