@@ -835,8 +835,6 @@
         }
 
         async function initializeApp(optionData) {
-            // Call destroyApp first to clean up any previous instances
-            destroyApp();
 
             const episodesOverlayHtml = `
                 <div id="episodesOverlay">
@@ -1521,3 +1519,4 @@
 
         // Example of how to start the application
         // initializeApp({ movieId: 'YOUR_MOVIE_ID', userId: 'YOUR_USER_ID', language: 'en' });
+        // destroyApp();
