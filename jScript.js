@@ -1,4 +1,4 @@
-Artplayer.NOTICE_TIME = 5000;
+    Artplayer.NOTICE_TIME = 5000;
         const controlsPlayAndPauseElement = `
                         <div id="playbackControlsContainer">
                             <button class="control-button" id="rewindButton" aria-label="Rewind 30 seconds" style="height: 70%;">
@@ -58,54 +58,6 @@ Artplayer.NOTICE_TIME = 5000;
                 </div>
                 <div class="action-button-container" id="actionButtonContainer"></div>
             </div>`;
-
-        const episodesOverlayHtml = `
-            <div id="episodesOverlay">
-                <div id="episodesView">
-                    <div class="episodes-header">
-                        <button id="openSeasonsButton" class="season-selector-button">
-                            <span>Choose Season</span>
-                            <svg class="arrow-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                        </button>
-                        <button id="closeEpisodesOverlay" class="close-episodes-button">&times;</button>
-                    </div>
-                    <div class="episodes-list-container">
-                        <button class="scroll-arrow left" id="scrollLeft">&lt;</button>
-                        <div class="episodes-list-inner">
-                            <div id="episodesList"></div>
-                        </div>
-                        <button class="scroll-arrow right" id="scrollRight">&gt;</button>
-                    </div>
-                </div>
-                <div id="seasonCardOverlay">
-                     <div class="seasons-header">
-                        <button id="backToEpisodesButton" class="season-selector-button">
-                             <svg class="arrow-up" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
-                            <span>Choose Episode</span>
-                        </button>
-                        <button id="closeSeasonsOverlay" class="close-episodes-button">&times;</button>
-                    </div>
-                    <div class="episodes-list-container">
-                        <button class="scroll-arrow left" id="seasonScrollLeft">&lt;</button>
-                        <div class="episodes-list-inner">
-                            <div id="seasonCardList"></div>
-                        </div>
-                        <button class="scroll-arrow right" id="seasonScrollRight">&gt;</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const lockOverlayHtml = `
-            <div id="lockOverlayContent">
-                <h2>NTA FATABUGUZI MUFITE!</h2>
-                <p>Mukomeze kureba movie nta fatabuguzi mufitemo niba warurifite ukaba utarihawe, TWANDIKIRE cg urigure.</p>
-                <div class="lock-overlay-buttons">
-                    <button id="subscribeButton">Gura ifatabuguzi</button>
-                    <button id="helpButton">Bona Ubufasha</button>
-                </div>
-            </div>
-        `;
 
         // --- Inject CSS Styles ---
         function injectComponentStyles() {
@@ -790,7 +742,6 @@ Artplayer.NOTICE_TIME = 5000;
         injectEpisodesOverlayStyles();
 
         let allLolls = ["https://video.wixstatic.com/video/d7f9fb_e09d55d52f0e427c9891189606b4925b/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_fbbc3d184a5c4ff284da54cb2e72c453/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_08949df5483a4b1dbe9d36d7451994e9/1080p/mp4/file.mp4"];
-        let languageCode = 'rw';
 
         function _m(video, url, art) {
             if (Hls.isSupported()) {
@@ -815,6 +766,55 @@ Artplayer.NOTICE_TIME = 5000;
         }
 
         async function initializeApp(optionData) {
+
+            const episodesOverlayHtml = `
+                <div id="episodesOverlay">
+                    <div id="episodesView">
+                        <div class="episodes-header">
+                            <button id="openSeasonsButton" class="season-selector-button">
+                                <span>${optionData.language != "en" ? "Hitamo Season" : "Choose Season"}</span>
+                                <svg class="arrow-down" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                            </button>
+                            <button id="closeEpisodesOverlay" class="close-episodes-button">&times;</button>
+                        </div>
+                        <div class="episodes-list-container">
+                            <button class="scroll-arrow left" id="scrollLeft">&lt;</button>
+                            <div class="episodes-list-inner">
+                                <div id="episodesList"></div>
+                            </div>
+                            <button class="scroll-arrow right" id="scrollRight">&gt;</button>
+                        </div>
+                    </div>
+                    <div id="seasonCardOverlay">
+                         <div class="seasons-header">
+                            <button id="backToEpisodesButton" class="season-selector-button">
+                                 <svg class="arrow-up" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>
+                                <span>${optionData.language != "en" ? "Hitamo Episode" : "Choose Episode"}</span>
+                            </button>
+                            <button id="closeSeasonsOverlay" class="close-episodes-button">&times;</button>
+                        </div>
+                        <div class="episodes-list-container">
+                            <button class="scroll-arrow left" id="seasonScrollLeft">&lt;</button>
+                            <div class="episodes-list-inner">
+                                <div id="seasonCardList"></div>
+                            </div>
+                            <button class="scroll-arrow right" id="seasonScrollRight">&gt;</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const lockOverlayHtml = `
+                <div id="lockOverlayContent">
+                    <h2>${optionData.language != "en" ? "NTA FATABUGUZI MUFITE!" : "YOU DON'T HAVE A SUBSCRIPTION !" }</h2>
+                    <p>${optionData.language != "en" ? "Mukunzi wa rebamovie nta fatabuguzi mufitemo niba warurifite ukaba utarihawe, TWANDIKIRE cg urigure." : "Hello, rebamovie fan you don't currently own  a subscription , consult SUPPORT , or buy a new one."}</p>
+                    <div class="lock-overlay-buttons">
+                        <button id="subscribeButton">${optionData.language != "en" ? "Gura ifatabuguzi" : "Get Subscription"}</button>
+                        <button id="helpButton">${optionData.language != "en" ? "Bona Ubufasha" : "Get Support"}</button>
+                    </div>
+                </div>
+            `;
+
             const loadingOverlay = document.getElementById('loading-overlay');
             try {
                 const response = await fetch("https://dataapis.wixsite.com/platformdata/_functions/cinemaData", {
@@ -871,9 +871,9 @@ Artplayer.NOTICE_TIME = 5000;
                 };
 
                 const removeEpisodeProgress = (movieId) => {
-                     let list = getContinueWatchingList();
-                     const updatedList = list.filter(item => item.movieId !== movieId);
-                     localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(updatedList));
+                    let list = getContinueWatchingList();
+                    const updatedList = list.filter(item => item.movieId !== movieId);
+                    localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(updatedList));
                 };
 
                 const getSavedEpisode = (movieId) => {
@@ -892,13 +892,13 @@ Artplayer.NOTICE_TIME = 5000;
 
                     if (freshEpisodeData) {
                         if (freshEpisodeData.locked) {
-                           currentMovieData = freshEpisodeData;
+                            currentMovieData = freshEpisodeData;
                         } else {
-                           currentMovieData = {
-                               ...savedEpisode,
-                               video: freshEpisodeData.video,
-                               locked: freshEpisodeData.locked
-                           };
+                            currentMovieData = {
+                                ...savedEpisode,
+                                video: freshEpisodeData.video,
+                                locked: freshEpisodeData.locked
+                            };
                         }
                     } else {
                         currentMovieData = seriesData.seasons[0].episodes[0];
@@ -927,7 +927,7 @@ Artplayer.NOTICE_TIME = 5000;
 
                 var art = new Artplayer({
                     container: '.artplayer-app', url: initialUrl, poster: currentMovieData.longCover,
-                    isLive: false, muted: false, autoplay: true, pip: false, autoSize: true, autoMini: true,
+                    isLive: false, muted: false, autoplay: true, pip: false, autoSize: false, autoMini: true,
                     screenshot: false, setting: false, loop: false, autoPlayback: false, autoOrientation: true,
                     antiOverlap: true, flip: false, playbackRate: false, aspectRatio: true, miniProgressBar: true,
                     backdrop: true, playsInline: true, airplay: false, fullscreenWeb: false, theme: "#1FDF67",
@@ -937,16 +937,16 @@ Artplayer.NOTICE_TIME = 5000;
                         { name: 'playback', html: controlsPlayAndPauseElement, style: { width: '100%', height: '65px', alignSelf: 'center', boxSizing: 'border-box', opacity: "1", transition: "opacity 3s ease-in-out", position: 'absolute', pointerEvents: 'auto', top: '45%' } },
                         { name: 'bottomInfo', html: `<div id="bottom-left-info"><div id="season-episode-info"></div><div id="movie-title-display"></div></div><div id="more-episodes-container"></div>`, style: { position: 'absolute', inset: '0', pointerEvents: 'none' } },
                         { name: 'episodes', html: episodesOverlayHtml, style: { display: 'none' } },
-                        { name: 'lock', html: lockOverlayHtml, style: { display: 'none', zIndex: 50 , width: '100%', height: '100%' , left: '0px' , borderRadius: '0px' , backdropFilter: 'blur(10px)' , backgroundColor: '#000000d9' } }
+                        { name: 'lock', html: lockOverlayHtml, style: { display: 'none', zIndex: 50, width: '100%', height: '100%', left: '0px', borderRadius: '0px', backdropFilter: 'blur(10px)', backgroundColor: '#000000d9' } }
                     ],
                     controls: [
-                       { name: 'currentTime', position: 'left', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '15px' } },
-                       { name: 'totalTime', position: 'right', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '15px' } }
+                        { name: 'currentTime', position: 'left', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '15px' } },
+                        { name: 'totalTime', position: 'right', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '15px' } }
                     ],
                     plugins: currentMovieData.adstatus === false ? [] : [
                         artplayerPluginAds({
                             html: '<img src="" alt="Ad Poster">', video: allLolls[0], url: "", playDuration: 48, totalDuration: 50,
-                            i18n: { close: languageCode === 'rw' ? 'Taruka' : 'Skip Ad', countdown: languageCode === 'rw' ? 'Kanda Hano' : 'Click Here', detail: languageCode === 'rw' ? 'Kwamamaza' : 'Ad', canBeClosed: languageCode === 'rw' ? '%s | Kwishyura?' : '%s | To Pay?' },
+                            i18n: { close: optionData.language != 'en' ? 'Taruka' : 'Skip Ad', countdown: optionData.language != 'en' ? 'Kanda Hano' : 'Click Here', detail: optionData.language != 'en' ? 'Kwamamaza' : 'Ad', canBeClosed: optionData.language != 'en' ? '%s | Kwishyura?' : '%s | To Pay?' },
                         }),
                     ],
                     customType: { m3u8: _m, mpd: _x }
@@ -960,6 +960,7 @@ Artplayer.NOTICE_TIME = 5000;
                     const forwardButton = art.layers.playback.querySelector('#forwardButton');
                     const playPauseButton = art.layers.playback.querySelector('#playPauseButton');
                     const volumeButton = art.layers.topControls.querySelector('#volumeButton');
+                    const backButton = art.layers.topControls.querySelector('#backButton');
                     const fullscreenButton = art.layers.topControls.querySelector('#fullscreenButton');
                     const mainControlsContainer = art.layers.topControls.querySelector('#mainControlsContainer');
                     const playbackControlsContainer = art.layers.playback.querySelector('#playbackControlsContainer');
@@ -973,6 +974,8 @@ Artplayer.NOTICE_TIME = 5000;
                     const centerControls = document.querySelector('.art-controls');
                     const currentTimeDisplay = art.controls.currentTime;
                     const totalTimeDisplay = art.controls.totalTime;
+                    const subscribeButton = lockLayer.querySelector('#subscribeButton');
+                    const helpButton = lockLayer.querySelector('#helpButton');
 
                     // --- Helper Functions ---
                     const formatTime = (seconds) => new Date(seconds * 1000).toISOString().substr(11, 8);
@@ -981,6 +984,39 @@ Artplayer.NOTICE_TIME = 5000;
                             element.classList.add('animate-out');
                             element.addEventListener('animationend', () => element.remove(), { once: true });
                         }
+                    };
+
+                    backButton.onclick = () => {
+                        const event = new CustomEvent('playerAction', {
+                            detail: {
+                                action: 'backButton',
+                                data: 'ready'
+                            }
+                        });
+
+                        document.dispatchEvent(event); // dispatch globally
+                    };
+
+                    backButton.onclick = () => {
+                        const event = new CustomEvent('playerAction', {
+                            detail: {
+                                action: 'subscribeButton',
+                                data: 'ready'
+                            }
+                        });
+
+                        document.dispatchEvent(event); // dispatch globally
+                    };
+
+                    backButton.onclick = () => {
+                        const event = new CustomEvent('playerAction', {
+                            detail: {
+                                action: 'helpButton',
+                                data: 'ready'
+                            }
+                        });
+
+                        document.dispatchEvent(event); // dispatch globally
                     };
 
                     // --- UI Update Functions ---
@@ -1028,7 +1064,7 @@ Artplayer.NOTICE_TIME = 5000;
                         const wrapper = document.createElement('div');
                         wrapper.id = 'skipIntroBtn';
                         wrapper.className = 'action-button-wrapper';
-                        wrapper.innerHTML = `<button class="dynamic-action-button"><span>Skip Intro</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg></button>`;
+                        wrapper.innerHTML = `<button class="dynamic-action-button"><span>${optionData.language != "en" ? "Taruka Indirimbo" : "Skip Intro"}</span><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="13 17 18 12 13 7"></polyline><polyline points="6 17 11 12 6 7"></polyline></svg></button>`;
                         wrapper.querySelector('button').onclick = () => { art.seek = introEndTime; art.play(); animateAndRemove(wrapper); };
                         actionButtonsContainer.innerHTML = '';
                         actionButtonsContainer.appendChild(wrapper);
@@ -1048,7 +1084,7 @@ Artplayer.NOTICE_TIME = 5000;
                         }
                         const timeString = formatTime(currentMovieData.continueWatching.inMinutes);
                         wrapper.innerHTML = `
-                            <button class="dynamic-action-button">Continue from - ${timeString}</button>
+                            <button class="dynamic-action-button">${optionData.language != "en" ? "Komeza uhereye" : "Continue from -" } ${timeString}</button>
                         `;
                         wrapper.querySelector('.dynamic-action-button').onclick = () => { art.seek = continueTime; art.play(); animateAndRemove(wrapper); };
 
@@ -1123,12 +1159,12 @@ Artplayer.NOTICE_TIME = 5000;
                                     const imageUrl = ep.longCover || '';
                                     card.style.backgroundImage = `url(${imageUrl})`;
                                     card.innerHTML = `<div class="season-card-number">Season ${ep.position.seasonIndex + 1}</div>`;
-                                    
+
                                     card.addEventListener('click', () => {
                                         currentMovieData = ep;
                                         selectedSeasonIndex = ep.position.seasonIndex;
                                         saveEpisodeProgress(currentMovieData);
-                                        
+
                                         let newUrl = '';
                                         for (const qualityKey of defaultQualityOrder) {
                                             if (ep.video && ep.video[qualityKey] && !ep.video[qualityKey].includes('not found')) {
@@ -1146,7 +1182,7 @@ Artplayer.NOTICE_TIME = 5000;
                                                 else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
                                                 hideOverlay();
                                             });
-                                        } else if(ep.locked) {
+                                        } else if (ep.locked) {
                                             showLockOverlay();
                                         } else {
                                             console.error("No valid URL for this episode");
@@ -1160,8 +1196,8 @@ Artplayer.NOTICE_TIME = 5000;
                                     if (ep.episodeId === currentMovieData.episodeId) {
                                         card.classList.add('active');
                                     }
-                                    
-                                    if(ep.locked) {
+
+                                    if (ep.locked) {
                                         card.classList.add('locked');
                                         card.innerHTML += `<div class="lock-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></div>`;
                                     }
@@ -1172,7 +1208,7 @@ Artplayer.NOTICE_TIME = 5000;
                                             showLockOverlay();
                                             return;
                                         }
-                                        
+
                                         card.classList.add('bouncing');
                                         card.addEventListener('animationend', () => card.classList.remove('bouncing'), { once: true });
 
@@ -1250,7 +1286,7 @@ Artplayer.NOTICE_TIME = 5000;
                             }
                         }, 10);
                     };
-                    
+
                     const preventKeystrokes = (e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -1263,16 +1299,16 @@ Artplayer.NOTICE_TIME = 5000;
                         bottomLeftInfo.style.display = 'none';
                         moreEpisodesContainer.style.display = 'none';
                         if (artBottom) artBottom.style.display = 'none';
-                        
+
                         const posterElement = document.querySelector('.artplayer-app .art-poster');
                         if (posterElement) {
-                           posterElement.style.display = 'block';
+                            posterElement.style.display = 'block';
                         }
-                        
+
                         lockLayer.style.display = 'flex';
                         document.addEventListener('keydown', preventKeystrokes, true);
                     };
-                    
+
                     // --- Initial UI Setup ---
                     if (artBottom) artBottom.style.padding = '30px 10px 0px';
                     if (progressBar) progressBar.style.height = '5px';
@@ -1280,7 +1316,7 @@ Artplayer.NOTICE_TIME = 5000;
                     if (centerControls) centerControls.style.paddingBottom = '20px';
 
                     updateUIForNewEpisode();
-                    if(currentMovieData.locked) {
+                    if (currentMovieData.locked) {
                         showLockOverlay();
                     } else {
                         if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
@@ -1291,7 +1327,7 @@ Artplayer.NOTICE_TIME = 5000;
                     if (apiData.isSeason) {
                         const moreEpisodesContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
                         if (moreEpisodesContainer) {
-                            moreEpisodesContainer.innerHTML = `<div id="more-episodes-card"><div class="next-episode-text"><h3>Next</h3><p>Episode</p></div><div class="next-episode-thumbnail"><img src="${currentMovieData.image}" onerror="this.style.display='none'" alt="Next Episode"><div class="play-overlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div></div>`;
+                            moreEpisodesContainer.innerHTML = `<div id="more-episodes-card"><div class="next-episode-text"><h3>${optionData.language != "en" ? "Izindi" : "Next"}</h3><p>${optionData.language != "en" ? "Episode" : "Episode"}</p></div><div class="next-episode-thumbnail"><img src="${currentMovieData.image}" onerror="this.style.display='none'" alt="Next Episode"><div class="play-overlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div></div>`;
                             moreEpisodesContainer.querySelector('#more-episodes-card').addEventListener('click', setupEpisodesOverlay);
                         }
                     }
@@ -1361,12 +1397,12 @@ Artplayer.NOTICE_TIME = 5000;
                     let lastSaveTime = 0;
                     let movieRemoved = false;
                     art.on('video:timeupdate', () => {
-                        if(currentMovieData.locked) {
+                        if (currentMovieData.locked) {
                             art.pause();
                             showLockOverlay();
                             return;
                         }
-                        
+
                         if (currentTimeDisplay) currentTimeDisplay.innerHTML = formatTime(art.currentTime);
                         if (totalTimeDisplay && art.duration) totalTimeDisplay.innerHTML = formatTime(art.duration);
 
