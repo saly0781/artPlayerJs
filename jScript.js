@@ -38,22 +38,7 @@
                 console.log("Window resize listener removed.");
             }
 
-            // 4. Remove injected CSS <style> elements by their unique IDs
-            const styleIds = [
-                'component-styles',
-                'playback-styles',
-                'dynamic-button-styles',
-                'episodes-overlay-styles'
-            ];
-            styleIds.forEach(id => {
-                const styleElement = document.getElementById(id);
-                if (styleElement) {
-                    styleElement.parentNode.removeChild(styleElement);
-                    console.log(`Removed style element: #${id}`);
-                }
-            });
-
-            // 5. Ensure the main player container is empty for the next initialization
+            // 4. Ensure the main player container is empty for the next initialization
             const playerContainer = document.querySelector('.artplayer-app');
             if (playerContainer) {
                 playerContainer.innerHTML = '';
