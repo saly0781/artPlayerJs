@@ -997,7 +997,7 @@
                         document.dispatchEvent(event); // dispatch globally
                     };
 
-                    backButton.onclick = () => {
+                    subscribeButton.onclick = () => {
                         const event = new CustomEvent('playerAction', {
                             detail: {
                                 action: 'subscribeButton',
@@ -1008,7 +1008,7 @@
                         document.dispatchEvent(event); // dispatch globally
                     };
 
-                    backButton.onclick = () => {
+                    helpButton.onclick = () => {
                         const event = new CustomEvent('playerAction', {
                             detail: {
                                 action: 'helpButton',
