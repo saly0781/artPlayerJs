@@ -1233,6 +1233,7 @@ async function initializeApp(optionData) {
                             card.innerHTML = `<div class="season-card-number">Season ${ep.position.seasonIndex + 1}</div>`;
 
                             card.addEventListener('click', () => {
+                                updateUIForNewEpisode();
                                 currentMovieData = ep;
                                 selectedSeasonIndex = ep.position.seasonIndex;
                                 saveEpisodeProgress(currentMovieData);
@@ -1248,7 +1249,6 @@ async function initializeApp(optionData) {
                                 if (newUrl) {
                                     art.switchUrl(newUrl, ep.title).then(() => {
                                         art.play();
-                                        updateUIForNewEpisode();
                                         actionButtonsContainer.innerHTML = '';
                                         if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
                                         else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
