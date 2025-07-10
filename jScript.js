@@ -16,7 +16,17 @@ function destroyApp() {
     if (artInstance) {
         try {
             // The `true` argument also removes the player's root element from the DOM
-            artInstance.destroy(false);
+            const movieTitleEl = artInstance.layers.bottomInfo.querySelector('#movie-title-display');
+            if (movieTitleEl) {
+                movieTitleEl.textContent = '';
+            }
+
+            const seasonEpInfoEl = artInstance.layers.bottomInfo.querySelector('#season-episode-info');
+            if (seasonEpInfoEl) {
+                seasonEpInfoEl.textContent = '';
+            }
+            
+            artInstance.destroy(true);
             artInstance = null;
             console.log("ArtPlayer instance destroyed.");
         } catch (e) {
@@ -39,20 +49,10 @@ function destroyApp() {
     }
 
     // 4. Ensure the main player container is empty for the next initialization
-    const playerContainer = document.querySelector('.artplayer-app');
+    /*const playerContainer = document.querySelector('.artplayer-app');
     if (playerContainer) {
         playerContainer.innerHTML = '';
-    }
-
-    const movieTitleEl = art.layers.bottomInfo.querySelector('#movie-title-display');
-    if (movieTitleEl) {
-        movieTitleEl.textContent = '';
-    }
-
-    const seasonEpInfoEl = art.layers.bottomInfo.querySelector('#season-episode-info');
-    if (seasonEpInfoEl) {
-        seasonEpInfoEl.textContent = '';
-    }
+    }*/
 
     console.log("Cleanup complete. Ready for re-initialization.");
 }
