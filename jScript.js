@@ -27,12 +27,12 @@ function destroyApp() {
             }
 
             const playerContainer = document.querySelector('.artplayer-app');
-            console.log("player container" , playerContainer);
+            console.log("player container", playerContainer);
             if (playerContainer) {
-                console.log("Removing player container from DOM..." , playerContainer);
+                console.log("Removing player container from DOM...", playerContainer);
                 playerContainer.innerHTML = '';
             }
-            
+
             artInstance.destroy(true);
             artInstance = null;
             console.log("ArtPlayer instance destroyed.");
@@ -783,6 +783,11 @@ function injectEpisodesOverlayStyles() {
                             cursor: pointer;
                             transition: background-color 0.2s;
                         }
+                        @media (max-width: 500px) {
+                            .lock-overlay-buttons button {
+                                font-size: 0.8rem;
+                            }
+                        }
                         #subscribeButton {
                             background-color: #1fdf67;
                             color: black;
@@ -831,6 +836,7 @@ function _x(video, url, art) {
 }
 
 async function initializeApp(optionData) {
+    let lockOverlayShown_ = false;
 
     const episodesOverlayHtml = `
                 <div id="episodesOverlay">
@@ -885,8 +891,8 @@ async function initializeApp(optionData) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                "MovieId": optionData.movieId, //"6140f361-3a6e-4cbb-b7a3-6d81c1eca4c6",
-                "userId": optionData.userId, //"1441537e-ef35-4ca8-b9df-6ddbd7b5678c",
+                "MovieId": optionData.movieId,
+                "userId": optionData.userId,
                 "deviceType": "IOS"
             })
         });
@@ -972,7 +978,6 @@ async function initializeApp(optionData) {
         }
 
         const loadingOverlay = document.getElementById('loading-overlay');
-        console.log("LOADING OVERLAY : ");
         if (loadingOverlay) loadingOverlay.style.display = 'none';
 
         const defaultQualityOrder = ['hdVideo', 'midVideo', 'lowVideo'];
@@ -1007,8 +1012,8 @@ async function initializeApp(optionData) {
                 { name: 'lock', html: lockOverlayHtml, style: { display: 'none', zIndex: 50, width: '100%', height: '100%', left: '0px', borderRadius: '0px', backdropFilter: 'blur(10px)', backgroundColor: '#000000d9' } }
             ],
             controls: [
-                { name: 'currentTime', position: 'left', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '15px' } },
-                { name: 'totalTime', position: 'right', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '15px' } }
+                { name: 'currentTime', position: 'left', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '1rem', paddingLeft: '10px' } },
+                { name: 'totalTime', position: 'right', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '1rem', paddingRight: '10px' } }
             ],
             plugins: currentMovieData.adstatus === false ? [] : [
                 artplayerPluginAds({
@@ -1368,6 +1373,7 @@ async function initializeApp(optionData) {
 
             const showLockOverlay = () => {
                 art.pause();
+                art.fullscreen = false;
                 mainControlsContainer.style.display = 'none';
                 playbackControlsContainer.style.display = 'none';
                 bottomLeftInfo.style.display = 'none';
@@ -1381,6 +1387,7 @@ async function initializeApp(optionData) {
 
                 lockLayer.style.display = 'flex';
                 document.addEventListener('keydown', preventKeystrokes, true);
+                lockOverlayShown_ = true;
             };
 
             // --- Initial UI Setup ---
@@ -1390,12 +1397,9 @@ async function initializeApp(optionData) {
             if (centerControls) centerControls.style.paddingBottom = '20px';
 
             updateUIForNewEpisode();
-            if (currentMovieData.locked) {
-                showLockOverlay();
-            } else {
-                if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
-                else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
-            }
+            if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
+            else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
+
 
 
             if (apiData.isSeason) {
@@ -1477,10 +1481,15 @@ async function initializeApp(optionData) {
             let lastSaveTime = 0;
             let movieRemoved = false;
             art.on('video:timeupdate', () => {
-                if (currentMovieData.locked) {
+
+                let percentage = (art.currentTime / art.duration) * 100;
+                console.log(`Percentage: ${percentage}%`);
+
+                if (percentage > 50 && currentMovieData.type == 'M' && currentMovieData.locked == true) {
                     art.pause();
-                    showLockOverlay();
-                    return;
+                    if (lockOverlayShown_ == false) {
+                        showLockOverlay();
+                    }
                 }
 
                 if (currentTimeDisplay) currentTimeDisplay.innerHTML = formatTime(art.currentTime);
@@ -1513,10 +1522,16 @@ async function initializeApp(optionData) {
         });
 
     } catch (error) {
+        const event = new CustomEvent('playerAction', {
+            detail: {
+                action: 'backButton',
+                data: 'ready'
+            }
+        });
         console.error('Failed to initialize player:', error);
     }
 }
 
 // Example of how to start the application
-// initializeApp({ movieId: 'YOUR_MOVIE_ID', userId: 'YOUR_USER_ID', language: 'en' });
+//initializeApp();
 // destroyApp();
