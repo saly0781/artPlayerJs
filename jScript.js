@@ -972,7 +972,7 @@ async function initializeApp(optionData) {
         }
 
         const loadingOverlay = document.getElementById('loading-overlay');
-        console.log("LOADING OVERLAY : ", loadingOverlay);
+        console.log("LOADING OVERLAY : ");
         if (loadingOverlay) loadingOverlay.style.display = 'none';
 
         const defaultQualityOrder = ['hdVideo', 'midVideo', 'lowVideo'];
