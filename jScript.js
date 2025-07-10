@@ -27,6 +27,7 @@ function destroyApp() {
             }
 
             const playerContainer = document.querySelector('.artplayer-app');
+            console.log("player container" , playerContainer);
             if (playerContainer) {
                 console.log("Removing player container from DOM..." , playerContainer);
                 playerContainer.innerHTML = '';
