@@ -25,6 +25,12 @@ function destroyApp() {
             if (seasonEpInfoEl) {
                 seasonEpInfoEl.textContent = '';
             }
+
+            const playerContainer = document.querySelector('.artplayer-app');
+            if (playerContainer) {
+                console.log("Removing player container from DOM..." , playerContainer);
+                playerContainer.innerHTML = '';
+            }
             
             artInstance.destroy(true);
             artInstance = null;
@@ -47,12 +53,6 @@ function destroyApp() {
         resizeHandler = null;
         console.log("Window resize listener removed.");
     }
-
-    // 4. Ensure the main player container is empty for the next initialization
-    /*const playerContainer = document.querySelector('.artplayer-app');
-    if (playerContainer) {
-        playerContainer.innerHTML = '';
-    }*/
 
     console.log("Cleanup complete. Ready for re-initialization.");
 }
