@@ -16,7 +16,7 @@ function destroyApp() {
     if (artInstance) {
         try {
             // The `true` argument also removes the player's root element from the DOM
-            artInstance.destroy(true);
+            artInstance.destroy(false);
             artInstance = null;
             console.log("ArtPlayer instance destroyed.");
         } catch (e) {
