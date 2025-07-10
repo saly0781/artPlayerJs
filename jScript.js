@@ -880,7 +880,6 @@ async function initializeApp(optionData) {
                 </div>
             `;
 
-    const loadingOverlay = document.getElementById('loading-overlay');
     try {
         const response = await fetch("https://dataapis.wixsite.com/platformdata/_functions/cinemaData", {
             method: 'POST',
@@ -972,6 +971,8 @@ async function initializeApp(optionData) {
             currentMovieData = seriesData.seasons[0].episodes[0];
         }
 
+        const loadingOverlay = document.getElementById('loading-overlay');
+        console.log("LOADING OVERLAY : ", loadingOverlay);
         if (loadingOverlay) loadingOverlay.style.display = 'none';
 
         const defaultQualityOrder = ['hdVideo', 'midVideo', 'lowVideo'];
@@ -1513,7 +1514,6 @@ async function initializeApp(optionData) {
 
     } catch (error) {
         console.error('Failed to initialize player:', error);
-        if (loadingOverlay) loadingOverlay.textContent = `Error: Could not load video data. ${error.message}`;
     }
 }
 
