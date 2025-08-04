@@ -176,10 +176,10 @@ async function fetchAndCreateTypedBlobUrl(url) {
         // --- Determine MIME Type ---
         let mimeType = null;
         const lowerUrl = url.toLowerCase();
-        if (lowerUrl.includes('.m3u8')) {
+        if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.rebacdn1')) {
             mimeType = 'application/vnd.apple.mpegurl';
             videoType = 'm3u8'; // Set video type to M3U8
-        } else if (lowerUrl.includes('.mpd')) {
+        } else if (lowerUrl.includes('.mpd') || || lowerUrl.includes('.rebacdn2')) {
             mimeType = 'application/dash+xml';
             videoType = 'mpd'; // Set video type to MPD
         } else {
