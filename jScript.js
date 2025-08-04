@@ -179,7 +179,7 @@ async function fetchAndCreateTypedBlobUrl(url) {
         if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.rebacdn1')) {
             mimeType = 'application/vnd.apple.mpegurl';
             videoType = 'm3u8'; // Set video type to M3U8
-        } else if (lowerUrl.includes('.mpd') || || lowerUrl.includes('.rebacdn2')) {
+        } else if (lowerUrl.includes('.mpd') || lowerUrl.includes('.rebacdn2')) {
             mimeType = 'application/dash+xml';
             videoType = 'mpd'; // Set video type to MPD
         } else {
