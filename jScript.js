@@ -104,12 +104,10 @@ function saveUserQualityPreference(quality) {
 function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
     const qualityOrder = ['hd', 'mid', 'low'];
     const videoData = movieData.video;
-
     if (!videoData) {
         console.error("No video data found in movie ", movieData);
         return null;
     }
-
     // 1. If user has a specific preference saved, try to honor it first.
     if (preferredQuality) {
         const preferredUrlKey = `${preferredQuality}Video`;
@@ -143,19 +141,20 @@ function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
             // 'mid' (default) not available, fallback to HD or LOW for playback.
             console.log("'mid' quality (default) not available. Finding alternative default...");
             for (const quality of qualityOrder) {
-                 if (quality === 'mid') continue; // Already checked
-                 const urlKey = `${quality}Video`;
-                 const url = videoData[urlKey];
-                 if (url && !url.includes('not found')) {
-                     console.log(`Defaulting playback to alternative quality: ${quality}`);
-                     return { url: url, quality: quality };
-                 }
+                if (quality === 'mid') continue; // Already checked
+                const urlKey = `${quality}Video`;
+                const url = videoData[urlKey];
+                if (url && !url.includes('not found')) {
+                    console.log(`Defaulting playback to alternative quality: ${quality}`);
+                    return { url: url, quality: quality };
+                }
             }
             console.error("No playable video sources found, even default 'mid' and alternatives are missing.", movieData);
             return null;
         }
     }
 }
+
 // --- End Quality Preference Local Storage Helpers ---
 
 const controlsPlayAndPauseElement = `
@@ -177,6 +176,7 @@ const controlsPlayAndPauseElement = `
                                         </svg>
                                     </button>
                                 </div>`;
+
 const mainTopControlsContainer = `
                 <div id="mainControlsContainer">
                     <div class="primary-controls">
@@ -214,6 +214,7 @@ const mainTopControlsContainer = `
                     </div>
                     <div class="action-button-container" id="actionButtonContainer"></div>
                 </div>`;
+
 // --- Inject CSS Styles ---
 function injectComponentStyles() {
     const cssRules = `
@@ -345,7 +346,9 @@ function injectComponentStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
+
 injectComponentStyles();
+
 function injectPlaybackStyles() {
     const cssRules = `
                         @keyframes rotate-360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -356,7 +359,7 @@ function injectPlaybackStyles() {
                             width: 100%;
                             height: 100%;
                             display: flex;
-                            justify-content: center; 
+                            justify-content: center;
                             align-items: center;
                             box-sizing: border-box;
                             font-family: 'Inter', sans-serif;
@@ -377,7 +380,7 @@ function injectPlaybackStyles() {
                             align-items: center;
                             justify-content: center;
                             margin: 0 3.0vw;
-                            padding: 0; 
+                            padding: 0;
                             position: relative;
                             transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
                             aspect-ratio: 1 / 1;
@@ -397,7 +400,9 @@ function injectPlaybackStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
+
 injectPlaybackStyles();
+
 function injectDynamicButtonStyles() {
     const cssRules = `
                         @keyframes bounce-slide-out {
@@ -509,6 +514,7 @@ function injectDynamicButtonStyles() {
                             background: rgba(40, 40, 40, 0.7);
                             -webkit-backdrop-filter: blur(10px);
                             backdrop-filter: blur(10px);
+                            /* Initial border style - will be overridden by JS for countdown */
                             border: 1px solid rgba(255, 255, 255, 0.1);
                             border-radius: 12px;
                             padding: 10px;
@@ -516,6 +522,8 @@ function injectDynamicButtonStyles() {
                             align-items: center;
                             gap: 12px;
                             transition: all 0.2s ease;
+                            /* Ensure box-sizing is correct for border calculations */
+                            box-sizing: border-box;
                         }
                         #more-episodes-card:hover {
                             background: rgba(55, 55, 55, 0.8);
@@ -545,7 +553,9 @@ function injectDynamicButtonStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
+
 injectDynamicButtonStyles();
+
 function injectEpisodesOverlayStyles() {
     const cssRules = `
                         @keyframes bounce-click {
@@ -567,7 +577,7 @@ function injectEpisodesOverlayStyles() {
                             bottom: 0;
                             left: 0;
                             width: 100%;
-                            height: 250px; 
+                            height: 250px;
                             background: linear-gradient(to top, rgba(0,0,0,0.9) 80%, transparent);
                             z-index: 30;
                             display: flex;
@@ -732,8 +742,8 @@ function injectEpisodesOverlayStyles() {
                         }
                         .episode-card {
                             flex-shrink: 0;
-                            width: 250px; 
-                            height: 150px; 
+                            width: 250px;
+                            height: 150px;
                             background-size: cover;
                             background-position: center;
                             border-radius: 8px;
@@ -900,8 +910,11 @@ function injectEpisodesOverlayStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
+
 injectEpisodesOverlayStyles();
+
 let allLolls = ["https://video.wixstatic.com/video/d7f9fb_e09d55d52f0e427c9891189606b4925b/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_fbbc3d184a5c4ff284da54cb2e72c453/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_08949df5483a4b1dbe9d36d7451994e9/1080p/mp4/file.mp4"];
+
 function _m(video, url, art) {
     if (Hls.isSupported()) {
         if (art.hls) art.hls.destroy();
@@ -913,6 +926,7 @@ function _m(video, url, art) {
         art.notice.show = "Unsupported playback format: m3u8";
     }
 }
+
 function _x(video, url, art) {
     if (dashjs.supportsMediaSource()) {
         if (art.dash) art.dash.destroy();
@@ -922,6 +936,7 @@ function _x(video, url, art) {
         art.notice.show = "Unsupported playback format: mpd";
     }
 }
+
 async function initializeApp(optionData) {
     let lockOverlayShown_ = false;
     const episodesOverlayHtml = `
@@ -960,6 +975,7 @@ async function initializeApp(optionData) {
                     </div>
                 </div>
             `;
+
     const lockOverlayHtml = `
                 <div id="lockOverlayContent">
                     <h2>${optionData.language != "en" ? "NTA FATABUGUZI MUFITE!" : "YOU DON'T HAVE A SUBSCRIPTION !"}</h2>
@@ -970,6 +986,7 @@ async function initializeApp(optionData) {
                     </div>
                 </div>
             `;
+
     try {
         const response = await fetch("https://dataapis.wixsite.com/platformdata/_functions/cinemaData", {
             method: 'POST',
@@ -980,8 +997,10 @@ async function initializeApp(optionData) {
                 "deviceType": "IOS"
             })
         });
+
         if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
         const apiData = await response.json();
+
         let seriesData = {
             seasons: apiData.data.seasons.map((seasonName, index) => ({
                 season: index + 1,
@@ -989,7 +1008,9 @@ async function initializeApp(optionData) {
                 episodes: apiData.data.episodes[index]
             }))
         };
+
         const CONTINUE_WATCHING_KEY = 'continuewatching';
+
         const getContinueWatchingList = () => {
             const savedData = localStorage.getItem(CONTINUE_WATCHING_KEY);
             try {
@@ -999,6 +1020,7 @@ async function initializeApp(optionData) {
                 return [];
             }
         };
+
         const saveEpisodeProgress = (episodeData) => {
             if (!episodeData || !episodeData.movieId) return;
             let list = getContinueWatchingList();
@@ -1015,18 +1037,22 @@ async function initializeApp(optionData) {
             }
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(list));
         };
+
         const removeEpisodeProgress = (movieId) => {
             let list = getContinueWatchingList();
             const updatedList = list.filter(item => item.movieId !== movieId);
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(updatedList));
         };
+
         const getSavedEpisode = (movieId) => {
             const list = getContinueWatchingList();
             return list.find(item => item.movieId === movieId) || null;
         };
+
         const movieId = seriesData.seasons[0].episodes[0].movieId;
         let savedEpisode = getSavedEpisode(movieId);
         let currentMovieData;
+
         if (savedEpisode) {
             const freshEpisodeData = seriesData.seasons
                 .flatMap(s => s.episodes)
@@ -1047,6 +1073,7 @@ async function initializeApp(optionData) {
         } else {
             currentMovieData = seriesData.seasons[0].episodes[0];
         }
+
         const loadingOverlay = document.getElementById('loading-overlay');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
 
@@ -1056,7 +1083,6 @@ async function initializeApp(optionData) {
 
         // Use the new helper function to decide URL and playback quality
         const initialPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, savedUserQuality);
-
         if (!initialPlaybackInfo && !currentMovieData.locked) {
             console.error("No valid video sources found for the initial episode.");
             document.body.innerHTML = "Error: No playable video found for this content.";
@@ -1071,10 +1097,10 @@ async function initializeApp(optionData) {
             activeQuality = initialPlaybackInfo.quality; // Quality used for initial playback
             console.log(`Initial playback set to quality: ${activeQuality}`);
         } else if (!currentMovieData.locked) {
-             // Should ideally not reach here due to earlier check, but safety net.
-             console.error("No valid video sources found for the initial episode (fallback).");
-             document.body.innerHTML = "Error: No playable video found for this content.";
-             return;
+            // Should ideally not reach here due to earlier check, but safety net.
+            console.error("No valid video sources found for the initial episode (fallback).");
+            document.body.innerHTML = "Error: No playable video found for this content.";
+            return;
         }
         // --- End Initial Playback Quality Selection ---
 
@@ -1105,8 +1131,10 @@ async function initializeApp(optionData) {
             ],
             customType: { m3u8: _m, mpd: _x }
         });
+
         // Use `artInstance` from now on
         const art = artInstance;
+
         art.on('ready', () => {
             // --- DOM Element References from art.layers ---
             const actionButtonsContainer = art.layers.topControls.querySelector('#actionButtonContainer');
@@ -1130,14 +1158,17 @@ async function initializeApp(optionData) {
             const totalTimeDisplay = art.controls.totalTime;
             const subscribeButton = lockLayer.querySelector('#subscribeButton');
             const helpButton = lockLayer.querySelector('#helpButton');
+
             // --- Helper Functions ---
             const formatTime = (seconds) => new Date(seconds * 1000).toISOString().substr(11, 8);
+
             const animateAndRemove = (element) => {
                 if (element && !element.classList.contains('animate-out')) {
                     element.classList.add('animate-out');
                     element.addEventListener('animationend', () => element.remove(), { once: true });
                 }
             };
+
             backButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1147,6 +1178,7 @@ async function initializeApp(optionData) {
                 });
                 document.dispatchEvent(event); // dispatch globally
             };
+
             subscribeButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1156,6 +1188,7 @@ async function initializeApp(optionData) {
                 });
                 document.dispatchEvent(event); // dispatch globally
             };
+
             helpButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1165,6 +1198,7 @@ async function initializeApp(optionData) {
                 });
                 document.dispatchEvent(event); // dispatch globally
             };
+
             // --- UI Update Functions ---
             const updateUIForNewEpisode = () => {
                 const seasonEpInfoEl = art.layers.bottomInfo.querySelector('#season-episode-info');
@@ -1204,6 +1238,7 @@ async function initializeApp(optionData) {
                     }
                 });
             };
+
             const showSkipIntroButton = () => {
                 const introEndTime = parseInt(currentMovieData.time.startTime, 10);
                 if (actionButtonsContainer.querySelector('#skipIntroBtn') || !introEndTime || art.currentTime >= introEndTime) return;
@@ -1215,6 +1250,7 @@ async function initializeApp(optionData) {
                 actionButtonsContainer.innerHTML = '';
                 actionButtonsContainer.appendChild(wrapper);
             };
+
             const showContinueWatchingButton = () => {
                 const continueTime = currentMovieData.continueWatching.inMinutes;
                 if (actionButtonsContainer.querySelector('#continueWatchingContainer') || !continueTime) return;
@@ -1235,6 +1271,7 @@ async function initializeApp(optionData) {
                 actionButtonsContainer.innerHTML = '';
                 actionButtonsContainer.appendChild(wrapper);
             };
+
             // --- Episodes Overlay Setup ---
             const setupEpisodesOverlay = () => {
                 const episodesLayer = document.querySelector('.art-layer-episodes');
@@ -1251,6 +1288,7 @@ async function initializeApp(optionData) {
                 const backToEpisodesBtn = episodesLayer.querySelector('#backToEpisodesButton');
                 const closeSeasonsBtn = episodesLayer.querySelector('#closeSeasonsOverlay');
                 let selectedSeasonIndex = currentMovieData.position.seasonIndex;
+
                 const populateSeasonCards = () => {
                     if (!seriesData || !seasonCardList) return;
                     seasonCardList.innerHTML = '';
@@ -1273,6 +1311,7 @@ async function initializeApp(optionData) {
                         seasonCardList.appendChild(card);
                     });
                 };
+
                 const hideOverlay = () => {
                     episodesOverlay.classList.remove('visible');
                     if (artBottom) artBottom.style.visibility = 'visible';
@@ -1281,6 +1320,7 @@ async function initializeApp(optionData) {
                         episodesOverlay.classList.remove('seasons-active');
                     }, { once: true });
                 };
+
                 const populateEpisodes = (seasonIndex) => {
                     if (!seriesData || !episodesList) return;
                     const season = seriesData.seasons[seasonIndex];
@@ -1295,47 +1335,8 @@ async function initializeApp(optionData) {
                             card.style.backgroundImage = `url(${imageUrl})`;
                             card.innerHTML = `<div class="season-card-number">Season ${ep.position.seasonIndex + 1}</div>`;
                             card.addEventListener('click', () => {
-                                updateUIForNewEpisode();
-                                currentMovieData = ep;
-                                selectedSeasonIndex = ep.position.seasonIndex;
-                                saveEpisodeProgress(currentMovieData);
-                                // --- Determine Playback Quality and URL for New Episode ---
-                                const savedUserQualityForSwitch = getUserQualityPreference(); // Get current saved preference
-                                console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
-
-                                const switchPlaybackInfo = determinePlaybackQualityAndUrl(ep, savedUserQualityForSwitch);
-
-                                let newUrl = '';
-                                activeQuality = ''; // Reset active quality tracker
-
-                                if (switchPlaybackInfo) {
-                                    newUrl = switchPlaybackInfo.url;
-                                    activeQuality = switchPlaybackInfo.quality; // Set to quality actually used for playback
-                                    console.log(`Switching to episode with playback quality: ${activeQuality}`);
-                                } else if (!ep.locked) {
-                                    console.error("No valid URL for the selected episode.");
-                                    art.notice.show = "Error: No playable video found for the selected episode.";
-                                    return; // Stop the switch process
-                                }
-                                // --- End Playback Quality Selection for New Episode ---
-
-                                if (newUrl) {
-                                    art.switchUrl(newUrl, ep.title).then(() => {
-                                        art.play();
-                                        updateUIForNewEpisode(); // This will update UI based on the new `activeQuality`
-                                        actionButtonsContainer.innerHTML = '';
-                                        if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
-                                        else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
-                                        hideOverlay();
-                                    }).catch(err => {
-                                         console.error("Failed to switch to new episode URL:", err);
-                                         art.notice.show = "Failed to load the selected episode.";
-                                    });
-                                } else if (ep.locked) {
-                                    showLockOverlay();
-                                } else {
-                                    console.error("No valid URL for this episode (should have been caught earlier)");
-                                }
+                                // Use the new switch function
+                                switchToEpisode(ep);
                             });
                             episodesList.appendChild(card);
                         } else {
@@ -1357,46 +1358,14 @@ async function initializeApp(optionData) {
                                 }
                                 card.classList.add('bouncing');
                                 card.addEventListener('animationend', () => card.classList.remove('bouncing'), { once: true });
-                                currentMovieData = ep;
-                                saveEpisodeProgress(currentMovieData);
-                                // --- Determine Playback Quality and URL for New Episode ---
-                                const savedUserQualityForSwitch = getUserQualityPreference(); // Get current saved preference
-                                console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
-
-                                const switchPlaybackInfo = determinePlaybackQualityAndUrl(ep, savedUserQualityForSwitch);
-
-                                let newUrl = '';
-                                activeQuality = ''; // Reset active quality tracker
-
-                                if (switchPlaybackInfo) {
-                                    newUrl = switchPlaybackInfo.url;
-                                    activeQuality = switchPlaybackInfo.quality; // Set to quality actually used for playback
-                                    console.log(`Switching to episode with playback quality: ${activeQuality}`);
-                                } else if (!ep.locked) {
-                                    console.error("No valid URL for the selected episode.");
-                                    art.notice.show = "Error: No playable video found for the selected episode.";
-                                    return; // Stop the switch process
-                                }
-                                // --- End Playback Quality Selection for New Episode ---
-
-                                if (newUrl) {
-                                    art.switchUrl(newUrl, currentMovieData.title).then(() => {
-                                        art.play();
-                                        updateUIForNewEpisode(); // This will update UI based on the new `activeQuality`
-                                        actionButtonsContainer.innerHTML = '';
-                                        if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
-                                        else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
-                                        hideOverlay();
-                                    }).catch(err => {
-                                         console.error("Failed to switch to new episode URL:", err);
-                                         art.notice.show = "Failed to load the selected episode.";
-                                    });
-                                } else { console.error("No valid URL for this episode"); }
+                                // Use the new switch function
+                                switchToEpisode(ep);
                             });
                             episodesList.appendChild(card);
                         }
                     });
                 };
+
                 if (closeEpisodesBtn && !closeEpisodesBtn.dataset.listenerAttached) {
                     closeEpisodesBtn.addEventListener('click', hideOverlay);
                     closeEpisodesBtn.dataset.listenerAttached = 'true';
@@ -1438,10 +1407,12 @@ async function initializeApp(optionData) {
                     }
                 }, 10);
             };
+
             const preventKeystrokes = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
             };
+
             const showLockOverlay = () => {
                 art.pause();
                 art.fullscreen = false;
@@ -1458,6 +1429,259 @@ async function initializeApp(optionData) {
                 document.addEventListener('keydown', preventKeystrokes, true);
                 lockOverlayShown_ = true;
             };
+
+
+            // --- New Helper Functions for Next Episode Card and Switching ---
+
+            /**
+             * @function updateNextEpisodeCard
+             * @description Updates or creates the next episode card based on the current state.
+             *              If showNext is true and there's a next episode, it displays the "Next Episode" card with countdown.
+             *              If showNext is false, it shows the standard "More Episodes" card.
+             *              If there's no next episode or it's not a series, it hides the container.
+             * @param {boolean} showNext - Flag indicating whether to show the next episode card or the more episodes card.
+             */
+            function updateNextEpisodeCard(showNext = false) {
+                const moreEpisodesContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
+                if (!moreEpisodesContainer) return;
+
+                // Clear any existing content and timers
+                moreEpisodesContainer.innerHTML = '';
+                if (window.nextEpisodeCountdownTimer) {
+                    clearInterval(window.nextEpisodeCountdownTimer);
+                    window.nextEpisodeCountdownTimer = null;
+                }
+                if (window.nextEpisodeBorderAnimation) {
+                    cancelAnimationFrame(window.nextEpisodeBorderAnimation);
+                    window.nextEpisodeBorderAnimation = null;
+                }
+                // Reset any previous border animation styles
+                const existingCard = moreEpisodesContainer.querySelector('#more-episodes-card');
+                if (existingCard) {
+                    existingCard.style.borderRadius = '12px'; // Reset if needed
+                    existingCard.style.borderImage = '';
+                    existingCard.style.borderImageSlice = '';
+                    existingCard.style.borderImageWidth = '';
+                    existingCard.style.borderImageRepeat = '';
+                    existingCard.style.borderImageSource = '';
+                    existingCard.style.border = '1px solid rgba(255, 255, 255, 0.1)'; // Reset to CSS default or initial
+                }
+
+                if (!apiData.isSeason) {
+                    moreEpisodesContainer.style.display = 'none';
+                    return;
+                }
+
+                // Find the next episode in the same season or next season
+                let nextEpisodeData = null;
+                const currentSeasonIndex = currentMovieData.position.seasonIndex;
+                const currentEpisodeIndex = currentMovieData.position.episodeIndex;
+
+                if (currentSeasonIndex !== undefined && currentEpisodeIndex !== undefined) {
+                    const currentSeason = seriesData.seasons[currentSeasonIndex];
+                    if (currentSeason && currentSeason.episodes[currentEpisodeIndex + 1]) {
+                        // Next episode in the same season
+                        nextEpisodeData = currentSeason.episodes[currentEpisodeIndex + 1];
+                    } else if (currentSeason && currentSeason.episodes.length - 1 === currentEpisodeIndex) {
+                        // Last episode of the current season, check for next season's first episode
+                        if (seriesData.seasons[currentSeasonIndex + 1] && seriesData.seasons[currentSeasonIndex + 1].episodes[0]) {
+                            nextEpisodeData = seriesData.seasons[currentSeasonIndex + 1].episodes[0];
+                        }
+                    }
+                    // If it's the very last episode overall, nextEpisodeData remains null
+                }
+
+                if (showNext && nextEpisodeData) {
+                    // --- Show Next Episode Card with Countdown ---
+                    let countdownValue = 5; // Start countdown from 5
+                    const borderDuration = 5000; // 5 seconds in ms
+                    const startTime = performance.now();
+                    const cardId = 'next-episode-card'; // Use a different ID for clarity if needed
+                    const episodeDisplay = `EP ${nextEpisodeData.episode}${nextEpisodeData.partName || ''}`;
+
+                    moreEpisodesContainer.innerHTML = `
+                        <div id="more-episodes-card">
+                            <div class="next-episode-text">
+                                <h3>${optionData.language != "en" ? "Izindi" : "Next"}</h3>
+                                <p>${episodeDisplay}</p>
+                            </div>
+                            <div class="next-episode-thumbnail">
+                                <img src="${nextEpisodeData.image}" onerror="this.style.display='none'" alt="Next Episode">
+                                <div class="play-overlay">
+                                    <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    `; // Reuse the same ID/class structure for styling
+
+                    const nextEpisodeCard = moreEpisodesContainer.querySelector('#more-episodes-card');
+                    if (nextEpisodeCard) {
+                        // Ensure it's visible
+                        moreEpisodesContainer.style.display = 'block';
+
+                        // --- Countdown Timer Logic ---
+                        const pElement = nextEpisodeCard.querySelector('.next-episode-text p');
+                        if (pElement) {
+                            pElement.textContent = `${episodeDisplay} | ${countdownValue}s`;
+                        }
+
+                        window.nextEpisodeCountdownTimer = setInterval(() => {
+                            countdownValue--;
+                            if (pElement) {
+                                pElement.textContent = `${episodeDisplay} | ${countdownValue}s`;
+                            }
+                            if (countdownValue <= 0) {
+                                clearInterval(window.nextEpisodeCountdownTimer);
+                                window.nextEpisodeCountdownTimer = null;
+                                // Trigger episode switch when countdown finishes
+                                switchToEpisode(nextEpisodeData);
+                            }
+                        }, 1000);
+
+                        // --- Animated Border Logic ---
+                        function animateBorder(timestamp) {
+                            if (!startTime) startTime = timestamp;
+                            const elapsed = timestamp - startTime;
+                            const progress = Math.min(elapsed / borderDuration, 1);
+                            const angle = 360 * progress;
+
+                            // Update the border using conic-gradient
+                            if (nextEpisodeCard) {
+                                const gradient = `conic-gradient(#1fdf67 ${angle}deg, rgba(255, 255, 255, 0.1) ${angle}deg 359.9deg)`;
+                                nextEpisodeCard.style.borderImage = gradient;
+                                nextEpisodeCard.style.borderImageSlice = '1';
+                                nextEpisodeCard.style.borderImageWidth = '2px'; // Adjust width
+                                nextEpisodeCard.style.borderImageRepeat = 'stretch';
+                                // Ensure original border is effectively removed by border-image
+                                nextEpisodeCard.style.border = 'none';
+                            }
+
+                            if (progress < 1 && window.nextEpisodeCountdownTimer !== null) { // Continue animation if timer is still running
+                                window.nextEpisodeBorderAnimation = requestAnimationFrame(animateBorder);
+                            } else if (window.nextEpisodeCountdownTimer === null) {
+                                // Countdown finished, ensure final state
+                                if (nextEpisodeCard) {
+                                    nextEpisodeCard.style.borderImage = `conic-gradient(#1fdf67 359.9deg, rgba(255, 255, 255, 0.1) 359.9deg)`;
+                                }
+                            }
+                        }
+
+                        window.nextEpisodeBorderAnimation = requestAnimationFrame(animateBorder);
+
+                        // --- Click Handler for Manual Switch ---
+                        nextEpisodeCard.addEventListener('click', () => {
+                            // Clear timer and animation if clicked
+                            if (window.nextEpisodeCountdownTimer) {
+                                clearInterval(window.nextEpisodeCountdownTimer);
+                                window.nextEpisodeCountdownTimer = null;
+                            }
+                            if (window.nextEpisodeBorderAnimation) {
+                                cancelAnimationFrame(window.nextEpisodeBorderAnimation);
+                                window.nextEpisodeBorderAnimation = null;
+                            }
+                            switchToEpisode(nextEpisodeData);
+                        });
+
+                    } else {
+                        moreEpisodesContainer.style.display = 'none'; // Hide if card creation failed
+                    }
+
+                } else if (!showNext) {
+                    // --- Show Standard "More Episodes" Card ---
+                    if (nextEpisodeData) { // Only show if there *is* a next episode
+                        moreEpisodesContainer.innerHTML = `
+                            <div id="more-episodes-card">
+                                <div class="next-episode-text">
+                                    <h3>${optionData.language != "en" ? "Izindi" : "Next"}</h3>
+                                    <p>${optionData.language != "en" ? "Episode" : "Episode"}</p>
+                                </div>
+                                <div class="next-episode-thumbnail">
+                                    <img src="${currentMovieData.image}" onerror="this.style.display='none'" alt="Next Episode">
+                                    <div class="play-overlay">
+                                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
+                        if (moreEpisodesCard) {
+                            moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
+                            // Reset border styles potentially left from countdown
+                            moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                            moreEpisodesCard.style.borderImage = '';
+                            moreEpisodesContainer.style.display = 'block'; // Ensure it's visible
+                        }
+                    } else {
+                        moreEpisodesContainer.style.display = 'none'; // Hide if no next episode
+                    }
+                } else {
+                    // showNext is true but no nextEpisodeData -> Hide
+                    moreEpisodesContainer.style.display = 'none';
+                }
+            }
+
+            /**
+             * @function switchToEpisode
+             * @description Handles the logic for switching to a new episode.
+             * @param {Object} ep - The episode data object to switch to.
+             */
+            function switchToEpisode(ep) {
+                if (!ep) return;
+
+                // Clear any active timers/borders related to the *previous* next episode card
+                if (window.nextEpisodeCountdownTimer) {
+                    clearInterval(window.nextEpisodeCountdownTimer);
+                    window.nextEpisodeCountdownTimer = null;
+                }
+                if (window.nextEpisodeBorderAnimation) {
+                    cancelAnimationFrame(window.nextEpisodeBorderAnimation);
+                    window.nextEpisodeBorderAnimation = null;
+                }
+
+                currentMovieData = ep;
+                saveEpisodeProgress(currentMovieData);
+
+                // --- Determine Playback Quality and URL for New Episode ---
+                const savedUserQualityForSwitch = getUserQualityPreference();
+                console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
+                const switchPlaybackInfo = determinePlaybackQualityAndUrl(ep, savedUserQualityForSwitch);
+                let newUrl = '';
+                activeQuality = ''; // Reset active quality tracker
+
+                if (switchPlaybackInfo) {
+                    newUrl = switchPlaybackInfo.url;
+                    activeQuality = switchPlaybackInfo.quality;
+                    console.log(`Switching to episode with playback quality: ${activeQuality}`);
+                } else if (!ep.locked) {
+                    console.error("No valid URL for the selected episode.");
+                    art.notice.show = "Error: No playable video found for the selected episode.";
+                    return;
+                }
+
+                // --- End Playback Quality Selection for New Episode ---
+                if (newUrl) {
+                    art.switchUrl(newUrl, currentMovieData.title).then(() => {
+                        art.play();
+                        updateUIForNewEpisode();
+                        actionButtonsContainer.innerHTML = '';
+                        // Reset the flag for showing the next episode card for the *new* episode
+                        window.nextEpisodeCardShown = false;
+                        // Show appropriate initial button for the new episode
+                        if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
+                        else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
+                        // Update the next episode card (now for the *new* current episode)
+                        updateNextEpisodeCard(false); // Show standard card for the new episode
+                    }).catch(err => {
+                        console.error("Failed to switch to new episode URL:", err);
+                        art.notice.show = "Failed to load the selected episode.";
+                    });
+                } else if (ep.locked) {
+                    showLockOverlay();
+                } else {
+                    console.error("No valid URL for this episode (should have been caught earlier)");
+                }
+            }
+
             // --- Initial UI Setup ---
             if (artBottom) artBottom.style.padding = '30px 10px 0px';
             if (progressBar) progressBar.style.height = '5px';
@@ -1466,13 +1690,11 @@ async function initializeApp(optionData) {
             updateUIForNewEpisode();
             if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
             else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
-            if (apiData.isSeason) {
-                const moreEpisodesContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
-                if (moreEpisodesContainer) {
-                    moreEpisodesContainer.innerHTML = `<div id="more-episodes-card"><div class="next-episode-text"><h3>${optionData.language != "en" ? "Izindi" : "Next"}</h3><p>${optionData.language != "en" ? "Episode" : "Episode"}</p></div><div class="next-episode-thumbnail"><img src="${currentMovieData.image}" onerror="this.style.display='none'" alt="Next Episode"><div class="play-overlay"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div></div></div>`;
-                    moreEpisodesContainer.querySelector('#more-episodes-card').addEventListener('click', setupEpisodesOverlay);
-                }
-            }
+
+            // --- Modify the Initial Setup Section ---
+            // Call the new function to set up the initial card
+            updateNextEpisodeCard(false); // Initially show the standard card if applicable
+
             // --- Layout and Resize Handlers ---
             const syncWidths = () => { if (qualityControlContainer && actionButtonsContainer) { const qualityWidth = qualityControlContainer.offsetWidth; actionButtonsContainer.style.width = `${qualityWidth}px`; } };
             const updateActionButtonPosition = () => { if (actionButtonsContainer) { if (window.innerWidth > 480) { actionButtonsContainer.style.position = 'relative'; actionButtonsContainer.style.right = '33px'; } else { actionButtonsContainer.style.position = 'static'; actionButtonsContainer.style.right = 'auto'; } } };
@@ -1483,6 +1705,7 @@ async function initializeApp(optionData) {
             if (qualityControlContainer) resizeObserverInstance.observe(qualityControlContainer);
             resizeHandler = updateActionButtonPosition;
             window.addEventListener('resize', resizeHandler);
+
             // --- Event Listeners for Main Controls ---
             if (rewindButton) rewindButton.addEventListener('click', () => { art.seek = art.currentTime - 30; });
             if (forwardButton) forwardButton.addEventListener('click', () => { art.seek = art.currentTime + 30; });
@@ -1498,6 +1721,7 @@ async function initializeApp(optionData) {
                     volumeIconPathEl.setAttribute('d', isMuted ? volumeOffIconPath : volumeOnIconPath);
                 });
             }
+
             if (qualityControlContainer) {
                 qualityControlContainer.querySelectorAll('.segment-button').forEach(button => {
                     button.addEventListener('click', () => {
@@ -1514,18 +1738,21 @@ async function initializeApp(optionData) {
                                 art.notice.show = "Failed to switch quality.";
                             });
                         } else {
-                             art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
+                            art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
                         }
                     });
                 });
             }
+
             // --- ArtPlayer Event Hooks ---
             art.on('play', () => {
                 if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
             });
+
             art.on('pause', () => {
                 if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
             });
+
             art.on('control', state => {
                 if (lockLayer.style.display === 'flex') return;
                 mainControlsContainer.classList.toggle('hidden', !state);
@@ -1533,6 +1760,7 @@ async function initializeApp(optionData) {
                 bottomLeftInfo.classList.toggle('hidden', !state);
                 moreEpisodesContainer.classList.toggle('hidden', !state);
             });
+
             art.on('fullscreen', (isFull) => {
                 if (fullscreenButton) {
                     const fsIcon = fullscreenButton.querySelector('svg path');
@@ -1541,9 +1769,12 @@ async function initializeApp(optionData) {
                     fsIcon.setAttribute('d', isFull ? exitFsIcon : enterFsIcon);
                 }
             });
+
             let lastSaveTime = 0;
             let movieRemoved = false;
+
             art.on('video:timeupdate', () => {
+                if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
                 let percentage = (art.currentTime / art.duration) * 100;
                 console.log(`Percentage: ${percentage}%`);
                 if (percentage > 50 && currentMovieData.type == 'M' && currentMovieData.locked == true) {
@@ -1573,7 +1804,67 @@ async function initializeApp(optionData) {
                 const continueContainer = actionButtonsContainer.querySelector('#continueWatchingContainer');
                 const continueTime = currentMovieData.continueWatching.inMinutes;
                 if (continueContainer && continueTime && art.currentTime > continueTime + 10) animateAndRemove(continueContainer);
+
+                // --- Add this new logic for endTime and video ended ---
+                // Flag to track if the next episode card has been shown for this playback
+                if (typeof window.nextEpisodeCardShown === 'undefined') {
+                    window.nextEpisodeCardShown = false;
+                }
+
+                // Check for endTime to show Next Episode card (only for series)
+                const endTime = parseInt(currentMovieData.time?.endTime, 10);
+                if (!isNaN(endTime) && art.currentTime >= endTime && !window.nextEpisodeCardShown && apiData.isSeason) {
+                    console.log("Reached endTime, showing next episode card.");
+                    updateNextEpisodeCard(true); // Show the next episode card with countdown
+                    window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
+                }
             });
+
+            // --- Add this block for handling video end ---
+            // This will trigger if there's no endTime or if the user watches past the endTime
+            art.on('video:ended', () => {
+                console.log("Video ended.");
+                // Find the next episode (same logic as in updateNextEpisodeCard)
+                let nextEpisodeData = null;
+                const currentSeasonIndex = currentMovieData.position.seasonIndex;
+                const currentEpisodeIndex = currentMovieData.position.episodeIndex;
+
+                if (currentSeasonIndex !== undefined && currentEpisodeIndex !== undefined) {
+                    const currentSeason = seriesData.seasons[currentSeasonIndex];
+                    if (currentSeason && currentSeason.episodes[currentEpisodeIndex + 1]) {
+                        nextEpisodeData = currentSeason.episodes[currentEpisodeIndex + 1];
+                    } else if (currentSeason && currentSeason.episodes.length - 1 === currentEpisodeIndex) {
+                        if (seriesData.seasons[currentSeasonIndex + 1] && seriesData.seasons[currentSeasonIndex + 1].episodes[0]) {
+                            nextEpisodeData = seriesData.seasons[currentSeasonIndex + 1].episodes[0];
+                        }
+                    }
+                }
+
+                if (nextEpisodeData) {
+                    // If there's a next episode, switch to it automatically
+                    console.log("Switching to next episode automatically after video end.");
+                    switchToEpisode(nextEpisodeData); // Use the new switch function
+                } else {
+                    // Optionally handle the case where it's the last episode
+                    console.log("This is the last episode.");
+                    // E.g., show a message, hide the card, navigate back etc.
+                    const moreEpisodesContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
+                    if (moreEpisodesContainer) {
+                        // Clear timer/border if card was shown
+                        if (window.nextEpisodeCountdownTimer) {
+                            clearInterval(window.nextEpisodeCountdownTimer);
+                            window.nextEpisodeCountdownTimer = null;
+                        }
+                        if (window.nextEpisodeBorderAnimation) {
+                            cancelAnimationFrame(window.nextEpisodeBorderAnimation);
+                            window.nextEpisodeBorderAnimation = null;
+                        }
+                        moreEpisodesContainer.style.display = 'none'; // Hide the card
+                        // art.notice.show = "You've finished the series!"; // Optional notice
+                    }
+                }
+            });
+
         });
     } catch (error) {
         const event = new CustomEvent('playerAction', {
@@ -1585,6 +1876,7 @@ async function initializeApp(optionData) {
         console.error('Failed to initialize player:', error);
     }
 }
+
 // Example of how to start the application
 //initializeApp();
 // destroyApp();
