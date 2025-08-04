@@ -11,7 +11,6 @@ let resizeHandler = null;
  */
 function destroyApp() {
     console.log("Destroying existing player instance if it exists...");
-
     // 1. Destroy the ArtPlayer instance if it exists
     if (artInstance) {
         try {
@@ -20,19 +19,16 @@ function destroyApp() {
             if (movieTitleEl) {
                 movieTitleEl.textContent = '';
             }
-
             const seasonEpInfoEl = artInstance.layers.bottomInfo.querySelector('#season-episode-info');
             if (seasonEpInfoEl) {
                 seasonEpInfoEl.textContent = '';
             }
-
             const playerContainer = document.querySelector('.artplayer-app');
             console.log("player container", playerContainer);
             if (playerContainer) {
                 console.log("Removing player container from DOM...", playerContainer);
                 playerContainer.innerHTML = '';
             }
-
             artInstance.destroy(true);
             artInstance = null;
             console.log("ArtPlayer instance destroyed.");
@@ -40,26 +36,128 @@ function destroyApp() {
             console.error("Error destroying ArtPlayer instance:", e);
         }
     }
-
     // 2. Disconnect the ResizeObserver to stop watching for element resizes
     if (resizeObserverInstance) {
         resizeObserverInstance.disconnect();
         resizeObserverInstance = null;
         console.log("ResizeObserver disconnected.");
     }
-
     // 3. Remove the window resize event listener
     if (resizeHandler) {
         window.removeEventListener('resize', resizeHandler);
         resizeHandler = null;
         console.log("Window resize listener removed.");
     }
-
     console.log("Cleanup complete. Ready for re-initialization.");
 }
 
-
 Artplayer.NOTICE_TIME = 5000;
+
+// --- Quality Preference Local Storage Helpers ---
+const USER_QUALITY_PREFERENCE_KEY = 'userPreferredQuality';
+
+/**
+ * @function getUserQualityPreference
+ * @description Retrieves the user's preferred quality from localStorage.
+ * @returns {string|null} The preferred quality ('hd', 'mid', 'low') or null if not set.
+ */
+function getUserQualityPreference() {
+    try {
+        const preference = localStorage.getItem(USER_QUALITY_PREFERENCE_KEY);
+        if (preference === 'hd' || preference === 'mid' || preference === 'low') {
+            return preference;
+        }
+        return null; // Return null if preference is invalid or not set
+    } catch (e) {
+        console.error("Error reading user quality preference from localStorage:", e);
+        return null;
+    }
+}
+
+/**
+ * @function saveUserQualityPreference
+ * @description Saves the user's chosen quality to localStorage.
+ * @param {string} quality - The quality to save ('hd', 'mid', 'low').
+ */
+function saveUserQualityPreference(quality) {
+    if (quality === 'hd' || quality === 'mid' || quality === 'low') {
+        try {
+            localStorage.setItem(USER_QUALITY_PREFERENCE_KEY, quality);
+            console.log(`User quality preference saved: ${quality}`);
+        } catch (e) {
+            console.error("Error saving user quality preference to localStorage:", e);
+        }
+    } else {
+        console.warn("Attempted to save invalid quality preference:", quality);
+    }
+}
+
+/**
+ * @function determinePlaybackQualityAndUrl
+ * @description Determines the best quality URL to use for playback based on user preference and availability.
+ *              If no user preference exists, it defaults playback to 'mid' (if available) without saving 'mid' as a preference.
+ *              If the preferred quality URL is missing, it falls back to the best available without changing the saved preference.
+ * @param {Object} movieData - The data object for the current movie/episode containing video URLs.
+ * @param {string|null} preferredQuality - The user's preferred quality (from localStorage or explicit choice).
+ * @returns {{url: string, quality: string}|null} Object containing the URL and the quality used for playback, or null if no URL found.
+ */
+function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
+    const qualityOrder = ['hd', 'mid', 'low'];
+    const videoData = movieData.video;
+
+    if (!videoData) {
+        console.error("No video data found in movie ", movieData);
+        return null;
+    }
+
+    // 1. If user has a specific preference saved, try to honor it first.
+    if (preferredQuality) {
+        const preferredUrlKey = `${preferredQuality}Video`;
+        const preferredUrl = videoData[preferredUrlKey];
+        if (preferredUrl && !preferredUrl.includes('not found')) {
+            console.log(`Using user's preferred quality URL: ${preferredQuality}`);
+            return { url: preferredUrl, quality: preferredQuality };
+        } else {
+            console.log(`User's preferred quality '${preferredQuality}' not available. Finding fallback...`);
+            // 2. Preferred quality not available, find fallback without changing preference.
+            for (const quality of qualityOrder) {
+                const urlKey = `${quality}Video`;
+                const url = videoData[urlKey];
+                if (url && !url.includes('not found')) {
+                    console.log(`Falling back to available quality: ${quality}`);
+                    return { url: url, quality: quality }; // Quality used for playback might differ from saved pref
+                }
+            }
+            // No fallbacks found
+            console.error("No playable video sources found, even after trying fallbacks for preferred quality.", movieData);
+            return null;
+        }
+    } else {
+        // 3. No saved preference. Default playback to 'mid'.
+        console.log("No saved user preference found. Defaulting playback quality logic...");
+        const midUrl = videoData['midVideo'];
+        if (midUrl && !midUrl.includes('not found')) {
+            console.log("Defaulting playback to 'mid' quality.");
+            return { url: midUrl, quality: 'mid' }; // Playback default is 'mid', but preference isn't saved yet.
+        } else {
+            // 'mid' (default) not available, fallback to HD or LOW for playback.
+            console.log("'mid' quality (default) not available. Finding alternative default...");
+            for (const quality of qualityOrder) {
+                 if (quality === 'mid') continue; // Already checked
+                 const urlKey = `${quality}Video`;
+                 const url = videoData[urlKey];
+                 if (url && !url.includes('not found')) {
+                     console.log(`Defaulting playback to alternative quality: ${quality}`);
+                     return { url: url, quality: quality };
+                 }
+            }
+            console.error("No playable video sources found, even default 'mid' and alternatives are missing.", movieData);
+            return null;
+        }
+    }
+}
+// --- End Quality Preference Local Storage Helpers ---
+
 const controlsPlayAndPauseElement = `
                                 <div id="playbackControlsContainer">
                                     <button class="control-button" id="rewindButton" aria-label="Rewind 30 seconds" style="height: 70%;">
@@ -68,12 +166,10 @@ const controlsPlayAndPauseElement = `
                                             <text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="7px" font-weight="bold" fill="#FFFFFF">30</text>
                                         </svg>
                                     </button>
-                                
                                     <button class="control-button play-button" id="playPauseButton" aria-label="Play">
                                         <svg viewBox="0 0 24 24" fill="currentColor" class="icon">
                                             <path d="M8 5v14l11-7z"/> </svg>
                                     </button>
-                                
                                     <button class="control-button" id="forwardButton" aria-label="Forward 30 seconds" style="height: 70%;">
                                         <svg viewBox="0 0 24 24" fill="currentColor" class="icon">
                                             <path d="M12 5V1L17 6l-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6H20c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/>
@@ -81,7 +177,6 @@ const controlsPlayAndPauseElement = `
                                         </svg>
                                     </button>
                                 </div>`;
-
 const mainTopControlsContainer = `
                 <div id="mainControlsContainer">
                     <div class="primary-controls">
@@ -119,7 +214,6 @@ const mainTopControlsContainer = `
                     </div>
                     <div class="action-button-container" id="actionButtonContainer"></div>
                 </div>`;
-
 // --- Inject CSS Styles ---
 function injectComponentStyles() {
     const cssRules = `
@@ -252,7 +346,6 @@ function injectComponentStyles() {
     document.head.appendChild(styleElement);
 }
 injectComponentStyles();
-
 function injectPlaybackStyles() {
     const cssRules = `
                         @keyframes rotate-360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -305,7 +398,6 @@ function injectPlaybackStyles() {
     document.head.appendChild(styleElement);
 }
 injectPlaybackStyles();
-
 function injectDynamicButtonStyles() {
     const cssRules = `
                         @keyframes bounce-slide-out {
@@ -454,7 +546,6 @@ function injectDynamicButtonStyles() {
     document.head.appendChild(styleElement);
 }
 injectDynamicButtonStyles();
-
 function injectEpisodesOverlayStyles() {
     const cssRules = `
                         @keyframes bounce-click {
@@ -810,9 +901,7 @@ function injectEpisodesOverlayStyles() {
     document.head.appendChild(styleElement);
 }
 injectEpisodesOverlayStyles();
-
 let allLolls = ["https://video.wixstatic.com/video/d7f9fb_e09d55d52f0e427c9891189606b4925b/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_fbbc3d184a5c4ff284da54cb2e72c453/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_08949df5483a4b1dbe9d36d7451994e9/1080p/mp4/file.mp4"];
-
 function _m(video, url, art) {
     if (Hls.isSupported()) {
         if (art.hls) art.hls.destroy();
@@ -824,7 +913,6 @@ function _m(video, url, art) {
         art.notice.show = "Unsupported playback format: m3u8";
     }
 }
-
 function _x(video, url, art) {
     if (dashjs.supportsMediaSource()) {
         if (art.dash) art.dash.destroy();
@@ -834,10 +922,8 @@ function _x(video, url, art) {
         art.notice.show = "Unsupported playback format: mpd";
     }
 }
-
 async function initializeApp(optionData) {
     let lockOverlayShown_ = false;
-
     const episodesOverlayHtml = `
                 <div id="episodesOverlay">
                     <div id="episodesView">
@@ -849,11 +935,11 @@ async function initializeApp(optionData) {
                             <button id="closeEpisodesOverlay" class="close-episodes-button">&times;</button>
                         </div>
                         <div class="episodes-list-container">
-                            <button class="scroll-arrow left" id="scrollLeft">&lt;</button>
+                            <button class="scroll-arrow left" id="scrollLeft"><</button>
                             <div class="episodes-list-inner">
                                 <div id="episodesList"></div>
                             </div>
-                            <button class="scroll-arrow right" id="scrollRight">&gt;</button>
+                            <button class="scroll-arrow right" id="scrollRight">></button>
                         </div>
                     </div>
                     <div id="seasonCardOverlay">
@@ -865,16 +951,15 @@ async function initializeApp(optionData) {
                             <button id="closeSeasonsOverlay" class="close-episodes-button">&times;</button>
                         </div>
                         <div class="episodes-list-container">
-                            <button class="scroll-arrow left" id="seasonScrollLeft">&lt;</button>
+                            <button class="scroll-arrow left" id="seasonScrollLeft"><</button>
                             <div class="episodes-list-inner">
                                 <div id="seasonCardList"></div>
                             </div>
-                            <button class="scroll-arrow right" id="seasonScrollRight">&gt;</button>
+                            <button class="scroll-arrow right" id="seasonScrollRight">></button>
                         </div>
                     </div>
                 </div>
             `;
-
     const lockOverlayHtml = `
                 <div id="lockOverlayContent">
                     <h2>${optionData.language != "en" ? "NTA FATABUGUZI MUFITE!" : "YOU DON'T HAVE A SUBSCRIPTION !"}</h2>
@@ -885,7 +970,6 @@ async function initializeApp(optionData) {
                     </div>
                 </div>
             `;
-
     try {
         const response = await fetch("https://dataapis.wixsite.com/platformdata/_functions/cinemaData", {
             method: 'POST',
@@ -898,7 +982,6 @@ async function initializeApp(optionData) {
         });
         if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
         const apiData = await response.json();
-
         let seriesData = {
             seasons: apiData.data.seasons.map((seasonName, index) => ({
                 season: index + 1,
@@ -906,9 +989,7 @@ async function initializeApp(optionData) {
                 episodes: apiData.data.episodes[index]
             }))
         };
-
         const CONTINUE_WATCHING_KEY = 'continuewatching';
-
         const getContinueWatchingList = () => {
             const savedData = localStorage.getItem(CONTINUE_WATCHING_KEY);
             try {
@@ -918,48 +999,38 @@ async function initializeApp(optionData) {
                 return [];
             }
         };
-
         const saveEpisodeProgress = (episodeData) => {
             if (!episodeData || !episodeData.movieId) return;
             let list = getContinueWatchingList();
             const existingIndex = list.findIndex(item => item.movieId === episodeData.movieId);
-
             const dataToStore = { ...episodeData };
             delete dataToStore.video;
-
             if (existingIndex > -1) {
                 list[existingIndex] = dataToStore;
             } else {
                 list.unshift(dataToStore);
             }
-
             if (list.length > 15) {
                 list = list.slice(0, 15);
             }
-
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(list));
         };
-
         const removeEpisodeProgress = (movieId) => {
             let list = getContinueWatchingList();
             const updatedList = list.filter(item => item.movieId !== movieId);
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(updatedList));
         };
-
         const getSavedEpisode = (movieId) => {
             const list = getContinueWatchingList();
             return list.find(item => item.movieId === movieId) || null;
         };
-
         const movieId = seriesData.seasons[0].episodes[0].movieId;
         let savedEpisode = getSavedEpisode(movieId);
         let currentMovieData;
-
         if (savedEpisode) {
             const freshEpisodeData = seriesData.seasons
                 .flatMap(s => s.episodes)
                 .find(ep => ep.episodeId === savedEpisode.episodeId);
-
             if (freshEpisodeData) {
                 if (freshEpisodeData.locked) {
                     currentMovieData = freshEpisodeData;
@@ -976,25 +1047,36 @@ async function initializeApp(optionData) {
         } else {
             currentMovieData = seriesData.seasons[0].episodes[0];
         }
-
         const loadingOverlay = document.getElementById('loading-overlay');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
 
-        const defaultQualityOrder = ['hdVideo', 'midVideo', 'lowVideo'];
-        let initialUrl = '';
-        let activeQuality = '';
-        for (const qualityKey of defaultQualityOrder) {
-            if (currentMovieData.video && currentMovieData.video[qualityKey] && !currentMovieData.video[qualityKey].includes('not found')) {
-                initialUrl = currentMovieData.video[qualityKey];
-                activeQuality = qualityKey.replace('Video', '');
-                break;
-            }
-        }
-        if (!initialUrl && !currentMovieData.locked) {
+        // --- Determine Initial Playback Quality and URL ---
+        const savedUserQuality = getUserQualityPreference(); // Get saved preference or null
+        console.log("Saved user quality preference:", savedUserQuality);
+
+        // Use the new helper function to decide URL and playback quality
+        const initialPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, savedUserQuality);
+
+        if (!initialPlaybackInfo && !currentMovieData.locked) {
             console.error("No valid video sources found for the initial episode.");
             document.body.innerHTML = "Error: No playable video found for this content.";
             return;
         }
+
+        let initialUrl = '';
+        let activeQuality = ''; // This represents the quality actually used for playback
+
+        if (initialPlaybackInfo) {
+            initialUrl = initialPlaybackInfo.url;
+            activeQuality = initialPlaybackInfo.quality; // Quality used for initial playback
+            console.log(`Initial playback set to quality: ${activeQuality}`);
+        } else if (!currentMovieData.locked) {
+             // Should ideally not reach here due to earlier check, but safety net.
+             console.error("No valid video sources found for the initial episode (fallback).");
+             document.body.innerHTML = "Error: No playable video found for this content.";
+             return;
+        }
+        // --- End Initial Playback Quality Selection ---
 
         // Assign the new Artplayer instance to the global variable
         artInstance = new Artplayer({
@@ -1023,10 +1105,8 @@ async function initializeApp(optionData) {
             ],
             customType: { m3u8: _m, mpd: _x }
         });
-
         // Use `artInstance` from now on
         const art = artInstance;
-
         art.on('ready', () => {
             // --- DOM Element References from art.layers ---
             const actionButtonsContainer = art.layers.topControls.querySelector('#actionButtonContainer');
@@ -1042,7 +1122,6 @@ async function initializeApp(optionData) {
             const bottomLeftInfo = art.layers.bottomInfo.querySelector('#bottom-left-info');
             const moreEpisodesContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
             const lockLayer = art.layers.lock;
-
             const artBottom = document.querySelector('.art-bottom');
             const progressBar = document.querySelector('.art-control.art-control-progress');
             const progressBarInner = document.querySelector('.art-control-progress-inner');
@@ -1051,7 +1130,6 @@ async function initializeApp(optionData) {
             const totalTimeDisplay = art.controls.totalTime;
             const subscribeButton = lockLayer.querySelector('#subscribeButton');
             const helpButton = lockLayer.querySelector('#helpButton');
-
             // --- Helper Functions ---
             const formatTime = (seconds) => new Date(seconds * 1000).toISOString().substr(11, 8);
             const animateAndRemove = (element) => {
@@ -1060,7 +1138,6 @@ async function initializeApp(optionData) {
                     element.addEventListener('animationend', () => element.remove(), { once: true });
                 }
             };
-
             backButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1068,10 +1145,8 @@ async function initializeApp(optionData) {
                         data: 'ready'
                     }
                 });
-
                 document.dispatchEvent(event); // dispatch globally
             };
-
             subscribeButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1079,10 +1154,8 @@ async function initializeApp(optionData) {
                         data: 'ready'
                     }
                 });
-
                 document.dispatchEvent(event); // dispatch globally
             };
-
             helpButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1090,10 +1163,8 @@ async function initializeApp(optionData) {
                         data: 'ready'
                     }
                 });
-
                 document.dispatchEvent(event); // dispatch globally
             };
-
             // --- UI Update Functions ---
             const updateUIForNewEpisode = () => {
                 const seasonEpInfoEl = art.layers.bottomInfo.querySelector('#season-episode-info');
@@ -1112,18 +1183,15 @@ async function initializeApp(optionData) {
                 }
                 if (movieTitleEl) movieTitleEl.textContent = currentMovieData.title;
                 art.poster = currentMovieData.longCover;
-
                 const formatSize = (sizeString) => {
                     if (!sizeString || !sizeString.includes('MB')) return '';
                     const sizeNumber = parseFloat(sizeString);
                     if (isNaN(sizeNumber)) return '';
                     return `${Math.floor(sizeNumber)} MB`;
                 };
-
                 art.layers.topControls.querySelector('#hdSize').textContent = formatSize(currentMovieData.size.hdSize);
                 art.layers.topControls.querySelector('#midSize').textContent = formatSize(currentMovieData.size.midSize);
                 art.layers.topControls.querySelector('#lowSize').textContent = formatSize(currentMovieData.size.lowSize);
-
                 art.layers.topControls.querySelectorAll('#qualityControl .segment-button').forEach(button => {
                     const quality = button.dataset.value;
                     button.classList.remove('active', 'disabled');
@@ -1136,7 +1204,6 @@ async function initializeApp(optionData) {
                     }
                 });
             };
-
             const showSkipIntroButton = () => {
                 const introEndTime = parseInt(currentMovieData.time.startTime, 10);
                 if (actionButtonsContainer.querySelector('#skipIntroBtn') || !introEndTime || art.currentTime >= introEndTime) return;
@@ -1148,7 +1215,6 @@ async function initializeApp(optionData) {
                 actionButtonsContainer.innerHTML = '';
                 actionButtonsContainer.appendChild(wrapper);
             };
-
             const showContinueWatchingButton = () => {
                 const continueTime = currentMovieData.continueWatching.inMinutes;
                 if (actionButtonsContainer.querySelector('#continueWatchingContainer') || !continueTime) return;
@@ -1166,32 +1232,25 @@ async function initializeApp(optionData) {
                                 <button class="dynamic-action-button">${optionData.language != "en" ? "Komeza uhereye" : "Continue from -"} ${timeString}</button>
                             `;
                 wrapper.querySelector('.dynamic-action-button').onclick = () => { art.seek = continueTime; art.play(); animateAndRemove(wrapper); };
-
                 actionButtonsContainer.innerHTML = '';
                 actionButtonsContainer.appendChild(wrapper);
             };
-
             // --- Episodes Overlay Setup ---
             const setupEpisodesOverlay = () => {
                 const episodesLayer = document.querySelector('.art-layer-episodes');
                 if (!episodesLayer) return;
-
                 const episodesOverlay = episodesLayer.querySelector('#episodesOverlay');
                 const artBottom = document.querySelector('.art-bottom');
-
                 const closeEpisodesBtn = episodesLayer.querySelector('#closeEpisodesOverlay');
                 const episodesList = episodesLayer.querySelector('#episodesList');
                 const scrollLeftBtn = episodesLayer.querySelector('#scrollLeft');
                 const scrollRightBtn = episodesLayer.querySelector('#scrollRight');
-
                 const openSeasonsBtn = episodesLayer.querySelector('#openSeasonsButton');
                 const seasonCardOverlay = episodesLayer.querySelector('#seasonCardOverlay');
                 const seasonCardList = episodesLayer.querySelector('#seasonCardList');
                 const backToEpisodesBtn = episodesLayer.querySelector('#backToEpisodesButton');
                 const closeSeasonsBtn = episodesLayer.querySelector('#closeSeasonsOverlay');
-
                 let selectedSeasonIndex = currentMovieData.position.seasonIndex;
-
                 const populateSeasonCards = () => {
                     if (!seriesData || !seasonCardList) return;
                     seasonCardList.innerHTML = '';
@@ -1214,7 +1273,6 @@ async function initializeApp(optionData) {
                         seasonCardList.appendChild(card);
                     });
                 };
-
                 const hideOverlay = () => {
                     episodesOverlay.classList.remove('visible');
                     if (artBottom) artBottom.style.visibility = 'visible';
@@ -1223,7 +1281,6 @@ async function initializeApp(optionData) {
                         episodesOverlay.classList.remove('seasons-active');
                     }, { once: true });
                 };
-
                 const populateEpisodes = (seasonIndex) => {
                     if (!seriesData || !episodesList) return;
                     const season = seriesData.seasons[seasonIndex];
@@ -1231,40 +1288,53 @@ async function initializeApp(optionData) {
                     episodesList.innerHTML = '';
                     season.episodes.forEach((ep, index) => {
                         const isNextSeasonCard = index === season.episodes.length - 1 && ep.position.seasonIndex !== seasonIndex;
-
                         if (isNextSeasonCard) {
                             const card = document.createElement('div');
                             card.className = 'season-card';
                             const imageUrl = ep.longCover || '';
                             card.style.backgroundImage = `url(${imageUrl})`;
                             card.innerHTML = `<div class="season-card-number">Season ${ep.position.seasonIndex + 1}</div>`;
-
                             card.addEventListener('click', () => {
                                 updateUIForNewEpisode();
                                 currentMovieData = ep;
                                 selectedSeasonIndex = ep.position.seasonIndex;
                                 saveEpisodeProgress(currentMovieData);
+                                // --- Determine Playback Quality and URL for New Episode ---
+                                const savedUserQualityForSwitch = getUserQualityPreference(); // Get current saved preference
+                                console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
+
+                                const switchPlaybackInfo = determinePlaybackQualityAndUrl(ep, savedUserQualityForSwitch);
 
                                 let newUrl = '';
-                                for (const qualityKey of defaultQualityOrder) {
-                                    if (ep.video && ep.video[qualityKey] && !ep.video[qualityKey].includes('not found')) {
-                                        newUrl = ep.video[qualityKey];
-                                        activeQuality = qualityKey.replace('Video', '');
-                                        break;
-                                    }
+                                activeQuality = ''; // Reset active quality tracker
+
+                                if (switchPlaybackInfo) {
+                                    newUrl = switchPlaybackInfo.url;
+                                    activeQuality = switchPlaybackInfo.quality; // Set to quality actually used for playback
+                                    console.log(`Switching to episode with playback quality: ${activeQuality}`);
+                                } else if (!ep.locked) {
+                                    console.error("No valid URL for the selected episode.");
+                                    art.notice.show = "Error: No playable video found for the selected episode.";
+                                    return; // Stop the switch process
                                 }
+                                // --- End Playback Quality Selection for New Episode ---
+
                                 if (newUrl) {
                                     art.switchUrl(newUrl, ep.title).then(() => {
                                         art.play();
+                                        updateUIForNewEpisode(); // This will update UI based on the new `activeQuality`
                                         actionButtonsContainer.innerHTML = '';
                                         if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
                                         else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
                                         hideOverlay();
+                                    }).catch(err => {
+                                         console.error("Failed to switch to new episode URL:", err);
+                                         art.notice.show = "Failed to load the selected episode.";
                                     });
                                 } else if (ep.locked) {
                                     showLockOverlay();
                                 } else {
-                                    console.error("No valid URL for this episode");
+                                    console.error("No valid URL for this episode (should have been caught earlier)");
                                 }
                             });
                             episodesList.appendChild(card);
@@ -1275,41 +1345,51 @@ async function initializeApp(optionData) {
                             if (ep.episodeId === currentMovieData.episodeId) {
                                 card.classList.add('active');
                             }
-
                             if (ep.locked) {
                                 card.classList.add('locked');
                                 card.innerHTML += `<div class="lock-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></div>`;
                             }
-
                             card.innerHTML += `<div class="episode-info"><div class="season-text">${season.seasonName}</div><div class="episode-number">${ep.episode}${ep.partName || ''}</div><div class="title-text">${ep.title}</div></div><div class="audio-wave-container"><div class="audio-wave-bar"></div><div class="audio-wave-bar"></div><div class="audio-wave-bar"></div></div>`;
                             card.addEventListener('click', () => {
                                 if (card.classList.contains('locked')) {
                                     showLockOverlay();
                                     return;
                                 }
-
                                 card.classList.add('bouncing');
                                 card.addEventListener('animationend', () => card.classList.remove('bouncing'), { once: true });
-
                                 currentMovieData = ep;
                                 saveEpisodeProgress(currentMovieData);
+                                // --- Determine Playback Quality and URL for New Episode ---
+                                const savedUserQualityForSwitch = getUserQualityPreference(); // Get current saved preference
+                                console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
+
+                                const switchPlaybackInfo = determinePlaybackQualityAndUrl(ep, savedUserQualityForSwitch);
 
                                 let newUrl = '';
-                                for (const qualityKey of defaultQualityOrder) {
-                                    if (currentMovieData.video[qualityKey] && !currentMovieData.video[qualityKey].includes('not found')) {
-                                        newUrl = currentMovieData.video[qualityKey];
-                                        activeQuality = qualityKey.replace('Video', '');
-                                        break;
-                                    }
+                                activeQuality = ''; // Reset active quality tracker
+
+                                if (switchPlaybackInfo) {
+                                    newUrl = switchPlaybackInfo.url;
+                                    activeQuality = switchPlaybackInfo.quality; // Set to quality actually used for playback
+                                    console.log(`Switching to episode with playback quality: ${activeQuality}`);
+                                } else if (!ep.locked) {
+                                    console.error("No valid URL for the selected episode.");
+                                    art.notice.show = "Error: No playable video found for the selected episode.";
+                                    return; // Stop the switch process
                                 }
+                                // --- End Playback Quality Selection for New Episode ---
+
                                 if (newUrl) {
                                     art.switchUrl(newUrl, currentMovieData.title).then(() => {
                                         art.play();
-                                        updateUIForNewEpisode();
+                                        updateUIForNewEpisode(); // This will update UI based on the new `activeQuality`
                                         actionButtonsContainer.innerHTML = '';
                                         if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
                                         else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
                                         hideOverlay();
+                                    }).catch(err => {
+                                         console.error("Failed to switch to new episode URL:", err);
+                                         art.notice.show = "Failed to load the selected episode.";
                                     });
                                 } else { console.error("No valid URL for this episode"); }
                             });
@@ -1317,17 +1397,14 @@ async function initializeApp(optionData) {
                         }
                     });
                 };
-
                 if (closeEpisodesBtn && !closeEpisodesBtn.dataset.listenerAttached) {
                     closeEpisodesBtn.addEventListener('click', hideOverlay);
                     closeEpisodesBtn.dataset.listenerAttached = 'true';
                 }
-
                 if (closeSeasonsBtn && !closeSeasonsBtn.dataset.listenerAttached) {
                     closeSeasonsBtn.addEventListener('click', hideOverlay);
                     closeSeasonsBtn.dataset.listenerAttached = 'true';
                 }
-
                 if (openSeasonsBtn && !openSeasonsBtn.dataset.listenerAttached) {
                     openSeasonsBtn.addEventListener('click', () => {
                         populateSeasonCards();
@@ -1335,14 +1412,12 @@ async function initializeApp(optionData) {
                     });
                     openSeasonsBtn.dataset.listenerAttached = 'true';
                 }
-
                 if (backToEpisodesBtn && !backToEpisodesBtn.dataset.listenerAttached) {
                     backToEpisodesBtn.addEventListener('click', () => {
                         episodesOverlay.classList.remove('seasons-active');
                     });
                     backToEpisodesBtn.dataset.listenerAttached = 'true';
                 }
-
                 if (scrollLeftBtn && !scrollLeftBtn.dataset.listenerAttached) {
                     scrollLeftBtn.addEventListener('click', () => { if (episodesList) episodesList.scrollBy({ left: -300, behavior: 'smooth' }); });
                     scrollLeftBtn.dataset.listenerAttached = 'true';
@@ -1351,10 +1426,8 @@ async function initializeApp(optionData) {
                     scrollRightBtn.addEventListener('click', () => { if (episodesList) episodesList.scrollBy({ left: 300, behavior: 'smooth' }); });
                     scrollRightBtn.dataset.listenerAttached = 'true';
                 }
-
                 episodesOverlay.classList.remove('seasons-active');
                 populateEpisodes(selectedSeasonIndex);
-
                 if (artBottom) artBottom.style.visibility = 'hidden';
                 episodesLayer.style.display = 'flex';
                 setTimeout(() => {
@@ -1365,12 +1438,10 @@ async function initializeApp(optionData) {
                     }
                 }, 10);
             };
-
             const preventKeystrokes = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
             };
-
             const showLockOverlay = () => {
                 art.pause();
                 art.fullscreen = false;
@@ -1379,29 +1450,22 @@ async function initializeApp(optionData) {
                 bottomLeftInfo.style.display = 'none';
                 moreEpisodesContainer.style.display = 'none';
                 if (artBottom) artBottom.style.display = 'none';
-
                 const posterElement = document.querySelector('.artplayer-app .art-poster');
                 if (posterElement) {
                     posterElement.style.display = 'block';
                 }
-
                 lockLayer.style.display = 'flex';
                 document.addEventListener('keydown', preventKeystrokes, true);
                 lockOverlayShown_ = true;
             };
-
             // --- Initial UI Setup ---
             if (artBottom) artBottom.style.padding = '30px 10px 0px';
             if (progressBar) progressBar.style.height = '5px';
             if (progressBarInner) progressBarInner.style.backgroundColor = '#393939';
             if (centerControls) centerControls.style.paddingBottom = '20px';
-
             updateUIForNewEpisode();
             if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
             else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
-
-
-
             if (apiData.isSeason) {
                 const moreEpisodesContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
                 if (moreEpisodesContainer) {
@@ -1409,21 +1473,16 @@ async function initializeApp(optionData) {
                     moreEpisodesContainer.querySelector('#more-episodes-card').addEventListener('click', setupEpisodesOverlay);
                 }
             }
-
             // --- Layout and Resize Handlers ---
             const syncWidths = () => { if (qualityControlContainer && actionButtonsContainer) { const qualityWidth = qualityControlContainer.offsetWidth; actionButtonsContainer.style.width = `${qualityWidth}px`; } };
             const updateActionButtonPosition = () => { if (actionButtonsContainer) { if (window.innerWidth > 480) { actionButtonsContainer.style.position = 'relative'; actionButtonsContainer.style.right = '33px'; } else { actionButtonsContainer.style.position = 'static'; actionButtonsContainer.style.right = 'auto'; } } };
-
             syncWidths();
             updateActionButtonPosition();
-
             // Assign instances and handlers to global variables for cleanup
             resizeObserverInstance = new ResizeObserver(syncWidths);
             if (qualityControlContainer) resizeObserverInstance.observe(qualityControlContainer);
-
             resizeHandler = updateActionButtonPosition;
             window.addEventListener('resize', resizeHandler);
-
             // --- Event Listeners for Main Controls ---
             if (rewindButton) rewindButton.addEventListener('click', () => { art.seek = art.currentTime - 30; });
             if (forwardButton) forwardButton.addEventListener('click', () => { art.seek = art.currentTime + 30; });
@@ -1443,18 +1502,23 @@ async function initializeApp(optionData) {
                 qualityControlContainer.querySelectorAll('.segment-button').forEach(button => {
                     button.addEventListener('click', () => {
                         if (button.classList.contains('disabled') || button.classList.contains('active')) return;
-                        const newQuality = button.dataset.value;
-                        const newUrl = currentMovieData.video[`${newQuality}Video`];
+                        const chosenQuality = button.dataset.value; // Quality the user explicitly chose
+                        const newUrl = currentMovieData.video[`${chosenQuality}Video`];
                         if (newUrl && !newUrl.includes('not found')) {
                             art.switchQuality(newUrl, currentMovieData.title).then(() => {
-                                activeQuality = newQuality;
-                                updateUIForNewEpisode();
+                                activeQuality = chosenQuality; // Update the playback quality tracker
+                                saveUserQualityPreference(chosenQuality); // *** SAVE USER CHOICE ***
+                                updateUIForNewEpisode(); // This will update the active button based on `activeQuality`
+                            }).catch(err => {
+                                console.error("Failed to switch quality:", err);
+                                art.notice.show = "Failed to switch quality.";
                             });
+                        } else {
+                             art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
                         }
                     });
                 });
             }
-
             // --- ArtPlayer Event Hooks ---
             art.on('play', () => {
                 if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
@@ -1477,24 +1541,19 @@ async function initializeApp(optionData) {
                     fsIcon.setAttribute('d', isFull ? exitFsIcon : enterFsIcon);
                 }
             });
-
             let lastSaveTime = 0;
             let movieRemoved = false;
             art.on('video:timeupdate', () => {
-
                 let percentage = (art.currentTime / art.duration) * 100;
                 console.log(`Percentage: ${percentage}%`);
-
                 if (percentage > 50 && currentMovieData.type == 'M' && currentMovieData.locked == true) {
                     art.pause();
                     if (lockOverlayShown_ == false) {
                         showLockOverlay();
                     }
                 }
-
                 if (currentTimeDisplay) currentTimeDisplay.innerHTML = formatTime(art.currentTime);
                 if (totalTimeDisplay && art.duration) totalTimeDisplay.innerHTML = formatTime(art.duration);
-
                 const currentTime = Date.now();
                 if (currentTime - lastSaveTime > 7000) {
                     if (art.duration > 0) {
@@ -1504,23 +1563,18 @@ async function initializeApp(optionData) {
                         lastSaveTime = currentTime;
                     }
                 }
-
                 if (!currentMovieData.isSeason && !movieRemoved && art.duration > 0 && (art.currentTime / art.duration) >= 0.8) {
                     removeEpisodeProgress(currentMovieData.movieId);
                     movieRemoved = true;
                 }
-
                 const skipBtn = actionButtonsContainer.querySelector('#skipIntroBtn');
                 const introEndTime = parseInt(currentMovieData.time.startTime, 10);
                 if (skipBtn && introEndTime && art.currentTime > introEndTime) animateAndRemove(skipBtn);
-
                 const continueContainer = actionButtonsContainer.querySelector('#continueWatchingContainer');
                 const continueTime = currentMovieData.continueWatching.inMinutes;
                 if (continueContainer && continueTime && art.currentTime > continueTime + 10) animateAndRemove(continueContainer);
-
             });
         });
-
     } catch (error) {
         const event = new CustomEvent('playerAction', {
             detail: {
@@ -1531,7 +1585,6 @@ async function initializeApp(optionData) {
         console.error('Failed to initialize player:', error);
     }
 }
-
 // Example of how to start the application
 //initializeApp();
 // destroyApp();
