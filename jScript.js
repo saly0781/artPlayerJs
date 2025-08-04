@@ -2,7 +2,6 @@
 let artInstance = null;
 let resizeObserverInstance = null;
 let resizeHandler = null;
-
 /**
  * @function destroyApp
  * @description Destroys the ArtPlayer instance, removes dynamically added styles,
@@ -10,7 +9,7 @@ let resizeHandler = null;
  * when re-initializing the player.
  */
 function destroyApp() {
-    console.log("Destroying existing player instance if it exists...");
+    //console.log("Destroying existing player instance if it exists...");
     // 1. Destroy the ArtPlayer instance if it exists
     if (artInstance) {
         try {
@@ -24,14 +23,14 @@ function destroyApp() {
                 seasonEpInfoEl.textContent = '';
             }
             const playerContainer = document.querySelector('.artplayer-app');
-            console.log("player container", playerContainer);
+            //console.log("player container", playerContainer);
             if (playerContainer) {
-                console.log("Removing player container from DOM...", playerContainer);
+                //console.log("Removing player container from DOM...", playerContainer);
                 playerContainer.innerHTML = '';
             }
             artInstance.destroy(true);
             artInstance = null;
-            console.log("ArtPlayer instance destroyed.");
+            //console.log("ArtPlayer instance destroyed.");
         } catch (e) {
             console.error("Error destroying ArtPlayer instance:", e);
         }
@@ -40,22 +39,19 @@ function destroyApp() {
     if (resizeObserverInstance) {
         resizeObserverInstance.disconnect();
         resizeObserverInstance = null;
-        console.log("ResizeObserver disconnected.");
+        //console.log("ResizeObserver disconnected.");
     }
     // 3. Remove the window resize event listener
     if (resizeHandler) {
         window.removeEventListener('resize', resizeHandler);
         resizeHandler = null;
-        console.log("Window resize listener removed.");
+        //console.log("Window resize listener removed.");
     }
-    console.log("Cleanup complete. Ready for re-initialization.");
+    //console.log("Cleanup complete. Ready for re-initialization.");
 }
-
 Artplayer.NOTICE_TIME = 5000;
-
 // --- Quality Preference Local Storage Helpers ---
 const USER_QUALITY_PREFERENCE_KEY = 'userPreferredQuality';
-
 /**
  * @function getUserQualityPreference
  * @description Retrieves the user's preferred quality from localStorage.
@@ -73,7 +69,6 @@ function getUserQualityPreference() {
         return null;
     }
 }
-
 /**
  * @function saveUserQualityPreference
  * @description Saves the user's chosen quality to localStorage.
@@ -83,7 +78,7 @@ function saveUserQualityPreference(quality) {
     if (quality === 'hd' || quality === 'mid' || quality === 'low') {
         try {
             localStorage.setItem(USER_QUALITY_PREFERENCE_KEY, quality);
-            console.log(`User quality preference saved: ${quality}`);
+            //console.log(`User quality preference saved: ${quality}`);
         } catch (e) {
             console.error("Error saving user quality preference to localStorage:", e);
         }
@@ -91,10 +86,13 @@ function saveUserQualityPreference(quality) {
         console.warn("Attempted to save invalid quality preference:", quality);
     }
 }
+// --- Global variable for video type ---
+let videoType = 'm3u8'; // Default video type, can be overridden
 
 /**
  * @function determinePlaybackQualityAndUrl
  * @description Determines the best quality URL to use for playback based on user preference and availability.
+ *              Sets the global `videoType` based on the selected URL.
  *              If no user preference exists, it defaults playback to 'mid' (if available) without saving 'mid' as a preference.
  *              If the preferred quality URL is missing, it falls back to the best available without changing the saved preference.
  * @param {Object} movieData - The data object for the current movie/episode containing video URLs.
@@ -106,171 +104,122 @@ function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
     const videoData = movieData.video;
     if (!videoData) {
         console.error("No video data found in movie ", movieData);
+        // Reset videoType to default if no video data
+        videoType = 'm3u8';
         return null;
     }
+
+    let selectedUrl = null;
+    let selectedQuality = null;
+
     // 1. If user has a specific preference saved, try to honor it first.
     if (preferredQuality) {
         const preferredUrlKey = `${preferredQuality}Video`;
         const preferredUrl = videoData[preferredUrlKey];
         if (preferredUrl && !preferredUrl.includes('not found')) {
-            console.log(`Using user's preferred quality URL: ${preferredQuality}`);
-            return { url: preferredUrl, quality: preferredQuality };
+            //console.log(`Using user's preferred quality URL: ${preferredQuality}`);
+            selectedUrl = preferredUrl;
+            selectedQuality = preferredQuality;
         } else {
-            console.log(`User's preferred quality '${preferredQuality}' not available. Finding fallback...`);
+            //console.log(`User's preferred quality '${preferredQuality}' not available. Finding fallback...`);
             // 2. Preferred quality not available, find fallback without changing preference.
             for (const quality of qualityOrder) {
                 const urlKey = `${quality}Video`;
                 const url = videoData[urlKey];
                 if (url && !url.includes('not found')) {
-                    console.log(`Falling back to available quality: ${quality}`);
-                    return { url: url, quality: quality }; // Quality used for playback might differ from saved pref
+                    //console.log(`Falling back to available quality: ${quality}`);
+                    selectedUrl = url;
+                    selectedQuality = quality;
+                    break; // Use the first available fallback
                 }
             }
-            // No fallbacks found
-            console.error("No playable video sources found, even after trying fallbacks for preferred quality.", movieData);
-            return null;
         }
     } else {
         // 3. No saved preference. Default playback to 'mid'.
-        console.log("No saved user preference found. Defaulting playback quality logic...");
+        //console.log("No saved user preference found. Defaulting playback quality logic...");
         const midUrl = videoData['midVideo'];
         if (midUrl && !midUrl.includes('not found')) {
-            console.log("Defaulting playback to 'mid' quality.");
-            return { url: midUrl, quality: 'mid' }; // Playback default is 'mid', but preference isn't saved yet.
+            //console.log("Defaulting playback to 'mid' quality.");
+            selectedUrl = midUrl;
+            selectedQuality = 'mid';
         } else {
             // 'mid' (default) not available, fallback to HD or LOW for playback.
-            console.log("'mid' quality (default) not available. Finding alternative default...");
+            //console.log("'mid' quality (default) not available. Finding alternative default...");
             for (const quality of qualityOrder) {
                 if (quality === 'mid') continue; // Already checked
                 const urlKey = `${quality}Video`;
                 const url = videoData[urlKey];
                 if (url && !url.includes('not found')) {
-                    console.log(`Defaulting playback to alternative quality: ${quality}`);
-                    return { url: url, quality: quality };
+                    //console.log(`Defaulting playback to alternative quality: ${quality}`);
+                    selectedUrl = url;
+                    selectedQuality = quality;
+                    break; // Use the first available alternative
                 }
             }
-            console.error("No playable video sources found, even default 'mid' and alternatives are missing.", movieData);
-            return null;
         }
+    }
+
+    // --- Determine and Set videoType based on the selected URL ---
+    if (selectedUrl) {
+        const lowerSelectedUrl = selectedUrl.toLowerCase();
+        if (lowerSelectedUrl.includes('.m3u8') || lowerSelectedUrl.includes('.rebacdn1')) {
+            videoType = 'm3u8';
+            //console.log(`Set videoType to 'm3u8' for URL: ${selectedUrl}`);
+        } else if (lowerSelectedUrl.includes('.mpd') || lowerSelectedUrl.includes('.rebacdn2')) {
+            videoType = 'mpd';
+            //console.log(`Set videoType to 'mpd' for URL: ${selectedUrl}`);
+        } else {
+            // Fallback or error handling for unknown types
+            console.warn(`Unknown video type for selected URL: ${selectedUrl}. Defaulting to 'm3u8'.`);
+            videoType = 'm3u8'; // Or handle error as needed
+            // For stricter handling, you might consider returning null here if type is critical
+        }
+    } else {
+        // No URL found at all
+        console.error("No playable video sources found.", movieData);
+        // Reset videoType to default if no playable source
+        videoType = 'm3u8';
+    }
+    // --- End Determine and Set videoType ---
+
+    if (selectedUrl && selectedQuality) {
+         return { url: selectedUrl, quality: selectedQuality };
+    } else {
+        return null;
     }
 }
 
-// --- Blob Management ---
-
+// --- Blob Management (No longer used for conversion, but kept for potential cleanup) ---
 /**
  * Stores the current Blob URLs associated with a movieData's video object.
  * Used for cleanup when switching episodes.
+ * (No longer used for conversion)
  */
-let currentBlobUrls = {};
-let videoType = 'm3u8'; // Default video type, can be overridden by the movieData
-
-/**
- * Fetches the content of a URL (M3U8 or MPD) and returns a Blob URL.
- * The Blob is explicitly typed based on the URL extension.
- * @param {string} url - The URL to fetch (e.g., M3U8 or MPD link).
- * @returns {Promise<{blobUrl: string, mimeType: string}>} A Promise resolving to an object containing the `blobUrl` and the `mimeType` used.
- * @throws {Error} If the fetch fails or the URL type is unsupported.
- */
-async function fetchAndCreateTypedBlobUrl(url) {
-    try {
-        // --- Determine MIME Type ---
-        let mimeType = null;
-        const lowerUrl = url.toLowerCase();
-        if (lowerUrl.includes('.m3u8') || lowerUrl.includes('.rebacdn1')) {
-            mimeType = 'application/vnd.apple.mpegurl';
-            videoType = 'm3u8'; // Set video type to M3U8
-        } else if (lowerUrl.includes('.mpd') || lowerUrl.includes('.rebacdn2')) {
-            mimeType = 'application/dash+xml';
-            videoType = 'mpd'; // Set video type to MPD
-        } else {
-            // Fallback or error handling for unknown types
-            // Since you mentioned focusing on M3U8, you might want to throw an error or default
-            console.warn(`Unknown video type for URL: ${url}. Defaulting to M3U8 MIME type.`);
-            mimeType = 'application/vnd.apple.mpegurl'; // Or throw new Error("Unsupported video URL type");
-             // For stricter handling, uncomment the line below:
-             // throw new Error("Unsupported video URL type. Expected .m3u8 or .mpd");
-        }
-        // --- End Determine MIME Type ---
-
-        console.log(`Fetching content from: ${url} (Type: ${mimeType})`);
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        let data;
-        // M3U8 is text, MPD is typically XML text. Blob constructor handles both well with 'text' or by letting it auto-detect from response.blob()
-        // Using response.blob() is often more robust as it handles the raw data directly.
-        // However, if you specifically need text processing, use response.text()
-        // For simplicity and handling potential binary segments (though less likely for manifests fetched this way initially), let's use .blob()
-        // const data = await response.text(); // If you specifically need text
-        const blobData = await response.blob(); // Get the raw blob data
-
-        // Create a new Blob with the fetched data and the determined MIME type
-        const typedBlob = new Blob([blobData], { type: mimeType });
-        const blobUrl = URL.createObjectURL(typedBlob);
-        console.log(`Fetched and converted ${url} to blob URL: ${blobUrl} with type: ${mimeType}`);
-        return { blobUrl, mimeType }; // Return both URL and type
-    } catch (error) {
-        console.error("Error fetching or creating typed blob URL:", error);
-        throw new Error(`Failed to process video URL (${url}): ${error.message}`);
-    }
-}
-
-
-/**
- * Converts video URLs in a `videoData` object to Blob URLs.
- * The original keys (e.g., hdVideo, midVideo) will map to the new Blob URLs.
- * @param {Object} videoData - The object containing video URLs (e.g., { hdVideo: 'url1', midVideo: 'url2' }).
- * @returns {Promise<Object>} A promise resolving to an object mapping original keys to { blobUrl, mimeType }.
- */
-async function convertVideoUrlsToBlobs(videoData) {
-    const blobMap = {};
-    const conversionPromises = [];
-
-    for (const [key, url] of Object.entries(videoData)) {
-        // Only process keys that look like quality URLs and have valid values
-        if (key.endsWith('Video') && url && typeof url === 'string' && !url.includes('not found')) {
-            conversionPromises.push(
-                fetchAndCreateTypedBlobUrl(url)
-                    .then(result => {
-                        blobMap[key] = result; // Store { blobUrl, mimeType }
-                        console.log(`Converted ${key} URL to Blob:`, result.blobUrl);
-                    })
-                    .catch(err => {
-                        console.error(`Failed to convert ${key} URL to Blob:`, url, err);
-                        // Optionally, keep the original URL on failure, or mark as unavailable
-                        // For now, we'll just not add it to blobMap, so the original URL remains
-                    })
-            );
-        }
-    }
-
-    // Wait for all conversions for this videoData object to complete
-    await Promise.allSettled(conversionPromises);
-    return blobMap;
-}
+let currentBlobUrls = {}; // Kept for potential cleanup calls
 
 /**
  * Revokes the Blob URLs stored in the provided map.
+ * (No longer used for conversion, but kept for potential cleanup)
  * @param {Object} blobMap - An object mapping keys to { blobUrl, mimeType } (e.g., output from convertVideoUrlsToBlobs).
  */
 function revokeBlobUrls(blobMap) {
-    if (!blobMap || typeof blobMap !== 'object') return;
-    for (const [, { blobUrl }] of Object.entries(blobMap)) {
-        if (blobUrl && blobUrl.startsWith('blob:')) {
-            try {
-                URL.revokeObjectURL(blobUrl);
-                console.log(`Revoked Blob URL: ${blobUrl}`);
-            } catch (e) {
-                console.warn(`Failed to revoke Blob URL: ${blobUrl}`, e);
-            }
-        }
-    }
+    //console.log("Blob revocation skipped (Blobs disabled).");
+    // No action needed as we are not using Blob URLs anymore
+    // If you want to keep the possibility of cleanup, you can leave the original revoke logic
+    // but it will likely not be called or will operate on empty maps.
+    // if (!blobMap || typeof blobMap !== 'object') return;
+    // for (const [, { blobUrl }] of Object.entries(blobMap)) {
+    //     if (blobUrl && blobUrl.startsWith('blob:')) {
+    //         try {
+    //             URL.revokeObjectURL(blobUrl);
+    //             //console.log(`Revoked Blob URL: ${blobUrl}`);
+    //         } catch (e) {
+    //             console.warn(`Failed to revoke Blob URL: ${blobUrl}`, e);
+    //         }
+    //     }
+    // }
 }
-
-// --- End Blob Management ---
-
+// --- End Blob Management (No longer used for conversion) ---
 
 // --- UI Component HTML Strings ---
 const controlsPlayAndPauseElement = `
@@ -1019,9 +968,7 @@ function injectEpisodesOverlayStyles() {
     document.head.appendChild(styleElement);
 }
 injectEpisodesOverlayStyles();
-
 let allLolls = ["https://video.wixstatic.com/video/d7f9fb_e09d55d52f0e427c9891189606b4925b/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_fbbc3d184a5c4ff284da54cb2e72c453/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_08949df5483a4b1dbe9d36d7451994e9/1080p/mp4/file.mp4"];
-
 function _m(video, url, art) {
     if (Hls.isSupported()) {
         if (art.hls) art.hls.destroy();
@@ -1033,7 +980,6 @@ function _m(video, url, art) {
         art.notice.show = "Unsupported playback format: m3u8";
     }
 }
-
 function _x(video, url, art) {
     if (dashjs.supportsMediaSource()) {
         if (art.dash) art.dash.destroy();
@@ -1043,7 +989,6 @@ function _x(video, url, art) {
         art.notice.show = "Unsupported playback format: mpd";
     }
 }
-
 async function initializeApp(optionData) {
     let lockOverlayShown_ = false;
     const episodesOverlayHtml = `
@@ -1168,64 +1113,44 @@ async function initializeApp(optionData) {
         const loadingOverlay = document.getElementById('loading-overlay');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
 
-        // --- NEW: Pre-fetch and Convert Initial Episode's Video URLs to Blobs ---
-        console.log("Converting initial episode's video URLs to Blobs...");
-        try {
-            // Convert the video URLs of the INITIAL currentMovieData
-            const initialBlobMap = await convertVideoUrlsToBlobs(currentMovieData.video); // Use await here
-            // Update the currentBlobUrls tracker for the initial episode
-            currentBlobUrls = initialBlobMap;
-
-            // IMPORTANT: Update currentMovieData.video to use the Blob URLs
-            // This ensures that subsequent quality switches (even on the initial episode) use Blobs
-            for (const [key, { blobUrl }] of Object.entries(initialBlobMap)) {
-                 // Only update if conversion was successful and we got a blobUrl
-                 if (blobUrl) {
-                     currentMovieData.video[key] = blobUrl;
-                     console.log(`Updated initial currentMovieData.${key} to Blob URL: ${blobUrl}`);
-                 }
-            }
-
-        } catch (err) {
-            console.error("Failed to prepare initial video URLs (Blobs):", err);
-            document.body.innerHTML = "Error: Failed to load initial video content.";
-            return; // Stop initialization
-        }
-        // --- End Blob Conversion for Initial Episode ---
-
-
-        // --- Determine Initial Playback Quality and URL (Now using Blob URLs) ---
+        // --- Determine Initial Playback Quality and URL (Now using Original URLs) ---
         const savedUserQuality = getUserQualityPreference(); // Get saved preference or null
-        console.log("Saved user quality preference:", savedUserQuality);
-        // Use the new helper function to decide URL and playback quality
-        // This will now use the Blob URLs stored in currentMovieData.video
+        //console.log("Saved user quality preference:", savedUserQuality);
+
+        // Use the updated helper function to decide URL, playback quality, and set videoType
+        // This will now use the original URLs from currentMovieData.video and set videoType
         const initialPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, savedUserQuality);
         if (!initialPlaybackInfo && !currentMovieData.locked) {
-            console.error("No valid (Blob) video sources found for the initial episode.");
+            console.error("No valid video sources found for the initial episode.");
             document.body.innerHTML = "Error: No playable video found for this content.";
             return;
         }
-        let initialUrl = ''; // This will now be the initial Blob URL
+        let initialUrl = ''; // This will now be the initial Original URL
         let activeQuality = ''; // This represents the quality actually used for playback
+
         if (initialPlaybackInfo) {
-            initialUrl = initialPlaybackInfo.url; // This is now a Blob URL
+            initialUrl = initialPlaybackInfo.url; // This is now an Original URL
             activeQuality = initialPlaybackInfo.quality;
-            console.log(`Initial playback set to quality: ${activeQuality}, using Blob URL: ${initialUrl}`);
+            //console.log(`Initial playback set to quality: ${activeQuality}, using Original URL: ${initialUrl}`);
+            // videoType is already set by determinePlaybackQualityAndUrl
         } else if (!currentMovieData.locked) {
             // Should ideally not reach here due to earlier check, but safety net.
-            console.error("No valid (Blob) video sources found for the initial episode (fallback).");
+            console.error("No valid video sources found for the initial episode (fallback).");
             document.body.innerHTML = "Error: No playable video found for this content.";
             return;
         }
-        // --- End Initial Playback Quality Selection and Blob Conversion ---
+        // --- End Initial Playback Quality Selection (No more Blob Conversion) ---
+
         // Assign the new Artplayer instance to the global variable
         artInstance = new Artplayer({
-            container: '.artplayer-app', url: initialUrl, poster: currentMovieData.longCover,
+            container: '.artplayer-app',
+            url: initialUrl, // Use the original URL
+            poster: currentMovieData.longCover,
             isLive: false, muted: false, autoplay: true, pip: false, autoSize: false, autoMini: true,
             screenshot: false, setting: false, loop: false, autoPlayback: false, autoOrientation: true,
             antiOverlap: true, flip: false, playbackRate: false, aspectRatio: true, miniProgressBar: true,
             backdrop: true, playsInline: true, airplay: false, fullscreenWeb: false, theme: "#1FDF67",
-            type: videoType, // Use the global videoType set earlier
+            type: videoType, // Use the global videoType set by determinePlaybackQualityAndUrl
             moreVideoAttr: { "webkit-playsinline": true },
             layers: [
                 { name: 'topControls', html: mainTopControlsContainer, style: { position: 'absolute', width: '100%', height: 'auto', pointerEvents: 'auto' } },
@@ -1697,16 +1622,16 @@ async function initializeApp(optionData) {
                     moreEpisodesContainer.style.display = 'none';
                 }
             }
-
             /**
              * @function switchToEpisode
              * @description Handles the logic for switching to a new episode.
              * @param {Object} ep - The episode data object to switch to.
              */
-            async function switchToEpisode(ep) { // Make function async
+            // async function switchToEpisode(ep) { // Remove async if no longer awaiting blob conversion
+            function switchToEpisode(ep) {
                 if (!ep) return;
 
-                // --- Blob Cleanup for Previous Episode ---
+                // --- Blob Cleanup for Previous Episode (Optional Cleanup) ---
                 // Clear any active timers/borders related to the *previous* next episode card
                 if (window.nextEpisodeCountdownTimer) {
                     clearInterval(window.nextEpisodeCountdownTimer);
@@ -1716,65 +1641,37 @@ async function initializeApp(optionData) {
                     cancelAnimationFrame(window.nextEpisodeBorderAnimation);
                     window.nextEpisodeBorderAnimation = null;
                 }
-
-                // Revoke Blobs for the *current* (soon to be old) episode
-                console.log("Revoking Blob URLs for previous episode...");
-                revokeBlobUrls(currentBlobUrls);
-                currentBlobUrls = {}; // Reset the map for the new episode
-                // --- End Blob Cleanup ---
+                // --- End Blob Cleanup (No more revoking needed) ---
 
                 // --- Update Current Movie Data ---
                 currentMovieData = ep;
                 saveEpisodeProgress(currentMovieData);
                 // --- End Update Current Movie Data ---
 
-                // --- Pre-fetch and Convert New Episode's Video URLs to Blobs ---
-                console.log("Converting new episode's video URLs to Blobs...");
-                try {
-                    // Convert the video URLs of the NEW currentMovieData
-                    const newBlobMap = await convertVideoUrlsToBlobs(currentMovieData.video);
-                    // Update the currentBlobUrls tracker
-                    currentBlobUrls = newBlobMap;
-
-                    // IMPORTANT: Update currentMovieData.video to use the Blob URLs
-                    // This ensures that subsequent quality switches use the Blob URLs directly
-                    for (const [key, { blobUrl }] of Object.entries(newBlobMap)) {
-                         // Only update if conversion was successful and we got a blobUrl
-                         if (blobUrl) {
-                             currentMovieData.video[key] = blobUrl;
-                             console.log(`Updated currentMovieData.${key} to Blob URL: ${blobUrl}`);
-                         }
-                    }
-                } catch (err) {
-                    console.error("Error during Blob conversion for new episode:", err);
-                     art.notice.show = "Error preparing video streams. Playback might be affected.";
-                     // Consider fallback or stopping here if critical
-                }
-                // --- End Blob Conversion ---
-
-                // --- Determine Playback Quality and URL (Now using Blob URLs) ---
+                // --- Determine Playback Quality and URL (Now using Original URLs) ---
                 const savedUserQualityForSwitch = getUserQualityPreference();
-                console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
-                // determinePlaybackQualityAndUrl now uses the Blob URLs in currentMovieData.video
+                //console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
+
+                // determinePlaybackQualityAndUrl now uses the original URLs in currentMovieData.video
+                // and sets the global videoType
                 const switchPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, savedUserQualityForSwitch);
-                let newUrl = ''; // This should now be a Blob URL
+                let newUrl = ''; // This should now be an Original URL
                 activeQuality = ''; // Reset active quality tracker
+
                 if (switchPlaybackInfo) {
-                    newUrl = switchPlaybackInfo.url; // This is now a Blob URL from currentMovieData.video
+                    newUrl = switchPlaybackInfo.url; // This is now an Original URL from currentMovieData.video
                     activeQuality = switchPlaybackInfo.quality;
-                    console.log(`Switching to episode with playback quality: ${activeQuality}, using Blob URL: ${newUrl}`);
+                    //console.log(`Switching to episode with playback quality: ${activeQuality}, using Original URL: ${newUrl}`);
+                    // videoType is already set by determinePlaybackQualityAndUrl
                 } else if (!ep.locked) {
-                    console.error("No valid (Blob) URL for the selected episode.");
+                    console.error("No valid URL for the selected episode.");
                     art.notice.show = "Error: No playable video found for the selected episode.";
                     return;
                 }
-                // --- End Playback Quality Selection ---
+                // --- End Playback Quality Selection (No more Blob Conversion) ---
 
                 if (newUrl) {
-                    // Show loading indicator if Artplayer has one (optional, as fetch is done)
-                    // if (art.loading) art.loading.show = true;
-
-                    // Use the pre-fetched Blob URL directly
+                    // Use the original URL directly
                     art.switchUrl(newUrl, currentMovieData.title).then(() => {
                         // if (art.loading) art.loading.show = false; // Hide loading indicator
                         art.play();
@@ -1789,16 +1686,15 @@ async function initializeApp(optionData) {
                         updateNextEpisodeCard(false); // Show standard card for the new episode
                     }).catch(err => {
                         // if (art.loading) art.loading.show = false; // Hide loading indicator
-                        console.error("Failed to switch to new episode URL (Blob):", err);
+                        console.error("Failed to switch to new episode URL (Original):", err);
                         art.notice.show = "Failed to load the selected episode.";
                     });
                 } else if (ep.locked) {
                     showLockOverlay();
                 } else {
-                    console.error("No valid Blob URL for this episode (should have been caught earlier)");
+                    console.error("No valid Original URL for this episode (should have been caught earlier)");
                 }
             }
-
             // --- Initial UI Setup ---
             if (artBottom) artBottom.style.padding = '30px 10px 0px';
             if (progressBar) progressBar.style.height = '5px';
@@ -1841,25 +1737,31 @@ async function initializeApp(optionData) {
                         if (button.classList.contains('disabled') || button.classList.contains('active')) return;
                         const chosenQuality = button.dataset.value; // Quality the user explicitly chose
 
-                        // --- Use Blob URL directly from currentMovieData ---
-                        // determinePlaybackQualityAndUrl now uses Blob URLs if they were set
+                        // --- Use Original URL directly from currentMovieData ---
+                        // determinePlaybackQualityAndUrl now uses Original URLs if they were set
+                        // and sets the global videoType
                         const switchPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, chosenQuality);
-
                         if (switchPlaybackInfo) {
-                            const newBlobUrl = switchPlaybackInfo.url; // This should be the Blob URL
+                            const newOriginalUrl = switchPlaybackInfo.url; // This should be the Original URL
                             const qualityForLogging = switchPlaybackInfo.quality;
-                            // Show loading indicator if Artplayer has one (optional for Blob switch)
+
+                            // Show loading indicator if Artplayer has one (optional)
                             // if (art.loading) art.loading.show = true;
 
-                            // Use the pre-fetched Blob URL directly
-                            art.switchQuality(newBlobUrl, currentMovieData.title).then(() => {
+                            // Use the original URL directly
+                            // Pass the determined videoType to switchQuality if Artplayer's switchQuality respects it,
+                            // or rely on the global videoType being set.
+                            art.switchQuality(newOriginalUrl, currentMovieData.title).then(() => {
                                 // if (art.loading) art.loading.show = false; // Hide loading indicator
                                 activeQuality = qualityForLogging; // Update the playback quality tracker
                                 saveUserQualityPreference(chosenQuality); // *** SAVE USER CHOICE ***
                                 updateUIForNewEpisode(); // This will update the active button based on `activeQuality`
+                                // Ensure videoType is set correctly (it should be by determinePlaybackQualityAndUrl)
+                                // art.type = videoType; // Might be needed if Artplayer doesn't automatically use the global type after switchQuality
+                                // Or re-initialize player if type change isn't handled well by switchQuality
                             }).catch(err => {
                                 // if (art.loading) art.loading.show = false; // Hide loading indicator
-                                console.error("Failed to switch quality (using Blob URL):", err);
+                                console.error("Failed to switch quality (using Original URL):", err);
                                 art.notice.show = `Failed to switch to ${chosenQuality.toUpperCase()} quality.`;
                             });
                         } else {
@@ -1871,7 +1773,7 @@ async function initializeApp(optionData) {
                                  art.notice.show = `Error preparing ${chosenQuality.toUpperCase()} quality.`;
                             }
                         }
-                        // --- End Use Blob URL ---
+                        // --- End Use Original URL ---
                     });
                 });
             }
@@ -1946,7 +1848,7 @@ async function initializeApp(optionData) {
                 // Check for endTime to show Next Episode card (only for series)
                 const endTime = parseInt(currentMovieData.time?.endTime, 10);
                 if (!isNaN(endTime) && art.currentTime >= endTime && !window.nextEpisodeCardShown && apiData.isSeason) {
-                    console.log("Reached endTime, showing next episode card.");
+                    //console.log("Reached endTime, showing next episode card.");
                     updateNextEpisodeCard(true); // Show the next episode card with countdown
                     window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
                 }
@@ -1954,7 +1856,7 @@ async function initializeApp(optionData) {
             // --- Add this block for handling video end ---
             // This will trigger if there's no endTime or if the user watches past the endTime
             art.on('video:ended', () => {
-                console.log("Video ended.");
+                //console.log("Video ended.");
                 updateNextEpisodeCard(true); // Show the next episode card with countdown
                 window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
             });
