@@ -155,8 +155,124 @@ function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
     }
 }
 
-// --- End Quality Preference Local Storage Helpers ---
+// --- Blob Management ---
 
+/**
+ * Stores the current Blob URLs associated with a movieData's video object.
+ * Used for cleanup when switching episodes.
+ */
+let currentBlobUrls = {};
+let videoType = 'm3u8'; // Default video type, can be overridden by the movieData
+
+/**
+ * Fetches the content of a URL (M3U8 or MPD) and returns a Blob URL.
+ * The Blob is explicitly typed based on the URL extension.
+ * @param {string} url - The URL to fetch (e.g., M3U8 or MPD link).
+ * @returns {Promise<{blobUrl: string, mimeType: string}>} A Promise resolving to an object containing the `blobUrl` and the `mimeType` used.
+ * @throws {Error} If the fetch fails or the URL type is unsupported.
+ */
+async function fetchAndCreateTypedBlobUrl(url) {
+    try {
+        // --- Determine MIME Type ---
+        let mimeType = null;
+        const lowerUrl = url.toLowerCase();
+        if (lowerUrl.includes('.m3u8')) {
+            mimeType = 'application/vnd.apple.mpegurl';
+            videoType = 'm3u8'; // Set video type to M3U8
+        } else if (lowerUrl.includes('.mpd')) {
+            mimeType = 'application/dash+xml';
+            videoType = 'mpd'; // Set video type to MPD
+        } else {
+            // Fallback or error handling for unknown types
+            // Since you mentioned focusing on M3U8, you might want to throw an error or default
+            console.warn(`Unknown video type for URL: ${url}. Defaulting to M3U8 MIME type.`);
+            mimeType = 'application/vnd.apple.mpegurl'; // Or throw new Error("Unsupported video URL type");
+             // For stricter handling, uncomment the line below:
+             // throw new Error("Unsupported video URL type. Expected .m3u8 or .mpd");
+        }
+        // --- End Determine MIME Type ---
+
+        console.log(`Fetching content from: ${url} (Type: ${mimeType})`);
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        let data;
+        // M3U8 is text, MPD is typically XML text. Blob constructor handles both well with 'text' or by letting it auto-detect from response.blob()
+        // Using response.blob() is often more robust as it handles the raw data directly.
+        // However, if you specifically need text processing, use response.text()
+        // For simplicity and handling potential binary segments (though less likely for manifests fetched this way initially), let's use .blob()
+        // const data = await response.text(); // If you specifically need text
+        const blobData = await response.blob(); // Get the raw blob data
+
+        // Create a new Blob with the fetched data and the determined MIME type
+        const typedBlob = new Blob([blobData], { type: mimeType });
+        const blobUrl = URL.createObjectURL(typedBlob);
+        console.log(`Fetched and converted ${url} to blob URL: ${blobUrl} with type: ${mimeType}`);
+        return { blobUrl, mimeType }; // Return both URL and type
+    } catch (error) {
+        console.error("Error fetching or creating typed blob URL:", error);
+        throw new Error(`Failed to process video URL (${url}): ${error.message}`);
+    }
+}
+
+
+/**
+ * Converts video URLs in a `videoData` object to Blob URLs.
+ * The original keys (e.g., hdVideo, midVideo) will map to the new Blob URLs.
+ * @param {Object} videoData - The object containing video URLs (e.g., { hdVideo: 'url1', midVideo: 'url2' }).
+ * @returns {Promise<Object>} A promise resolving to an object mapping original keys to { blobUrl, mimeType }.
+ */
+async function convertVideoUrlsToBlobs(videoData) {
+    const blobMap = {};
+    const conversionPromises = [];
+
+    for (const [key, url] of Object.entries(videoData)) {
+        // Only process keys that look like quality URLs and have valid values
+        if (key.endsWith('Video') && url && typeof url === 'string' && !url.includes('not found')) {
+            conversionPromises.push(
+                fetchAndCreateTypedBlobUrl(url)
+                    .then(result => {
+                        blobMap[key] = result; // Store { blobUrl, mimeType }
+                        console.log(`Converted ${key} URL to Blob:`, result.blobUrl);
+                    })
+                    .catch(err => {
+                        console.error(`Failed to convert ${key} URL to Blob:`, url, err);
+                        // Optionally, keep the original URL on failure, or mark as unavailable
+                        // For now, we'll just not add it to blobMap, so the original URL remains
+                    })
+            );
+        }
+    }
+
+    // Wait for all conversions for this videoData object to complete
+    await Promise.allSettled(conversionPromises);
+    return blobMap;
+}
+
+/**
+ * Revokes the Blob URLs stored in the provided map.
+ * @param {Object} blobMap - An object mapping keys to { blobUrl, mimeType } (e.g., output from convertVideoUrlsToBlobs).
+ */
+function revokeBlobUrls(blobMap) {
+    if (!blobMap || typeof blobMap !== 'object') return;
+    for (const [, { blobUrl }] of Object.entries(blobMap)) {
+        if (blobUrl && blobUrl.startsWith('blob:')) {
+            try {
+                URL.revokeObjectURL(blobUrl);
+                console.log(`Revoked Blob URL: ${blobUrl}`);
+            } catch (e) {
+                console.warn(`Failed to revoke Blob URL: ${blobUrl}`, e);
+            }
+        }
+    }
+}
+
+// --- End Blob Management ---
+
+
+// --- UI Component HTML Strings ---
 const controlsPlayAndPauseElement = `
                                 <div id="playbackControlsContainer">
                                     <button class="control-button" id="rewindButton" aria-label="Rewind 30 seconds" style="height: 70%;">
@@ -176,7 +292,6 @@ const controlsPlayAndPauseElement = `
                                         </svg>
                                     </button>
                                 </div>`;
-
 const mainTopControlsContainer = `
                 <div id="mainControlsContainer">
                     <div class="primary-controls">
@@ -214,7 +329,6 @@ const mainTopControlsContainer = `
                     </div>
                     <div class="action-button-container" id="actionButtonContainer"></div>
                 </div>`;
-
 // --- Inject CSS Styles ---
 function injectComponentStyles() {
     const cssRules = `
@@ -346,9 +460,7 @@ function injectComponentStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
-
 injectComponentStyles();
-
 function injectPlaybackStyles() {
     const cssRules = `
                         @keyframes rotate-360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -400,9 +512,7 @@ function injectPlaybackStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
-
 injectPlaybackStyles();
-
 function injectDynamicButtonStyles() {
     const cssRules = `
                         @keyframes bounce-slide-out {
@@ -553,9 +663,7 @@ function injectDynamicButtonStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
-
 injectDynamicButtonStyles();
-
 function injectEpisodesOverlayStyles() {
     const cssRules = `
                         @keyframes bounce-click {
@@ -910,7 +1018,6 @@ function injectEpisodesOverlayStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
-
 injectEpisodesOverlayStyles();
 
 let allLolls = ["https://video.wixstatic.com/video/d7f9fb_e09d55d52f0e427c9891189606b4925b/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_fbbc3d184a5c4ff284da54cb2e72c453/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_08949df5483a4b1dbe9d36d7451994e9/1080p/mp4/file.mp4"];
@@ -975,7 +1082,6 @@ async function initializeApp(optionData) {
                     </div>
                 </div>
             `;
-
     const lockOverlayHtml = `
                 <div id="lockOverlayContent">
                     <h2>${optionData.language != "en" ? "NTA FATABUGUZI MUFITE!" : "YOU DON'T HAVE A SUBSCRIPTION !"}</h2>
@@ -986,7 +1092,6 @@ async function initializeApp(optionData) {
                     </div>
                 </div>
             `;
-
     try {
         const response = await fetch("https://dataapis.wixsite.com/platformdata/_functions/cinemaData", {
             method: 'POST',
@@ -997,10 +1102,8 @@ async function initializeApp(optionData) {
                 "deviceType": "IOS"
             })
         });
-
         if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
         const apiData = await response.json();
-
         let seriesData = {
             seasons: apiData.data.seasons.map((seasonName, index) => ({
                 season: index + 1,
@@ -1008,9 +1111,7 @@ async function initializeApp(optionData) {
                 episodes: apiData.data.episodes[index]
             }))
         };
-
         const CONTINUE_WATCHING_KEY = 'continuewatching';
-
         const getContinueWatchingList = () => {
             const savedData = localStorage.getItem(CONTINUE_WATCHING_KEY);
             try {
@@ -1020,7 +1121,6 @@ async function initializeApp(optionData) {
                 return [];
             }
         };
-
         const saveEpisodeProgress = (episodeData) => {
             if (!episodeData || !episodeData.movieId) return;
             let list = getContinueWatchingList();
@@ -1037,22 +1137,18 @@ async function initializeApp(optionData) {
             }
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(list));
         };
-
         const removeEpisodeProgress = (movieId) => {
             let list = getContinueWatchingList();
             const updatedList = list.filter(item => item.movieId !== movieId);
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(updatedList));
         };
-
         const getSavedEpisode = (movieId) => {
             const list = getContinueWatchingList();
             return list.find(item => item.movieId === movieId) || null;
         };
-
         const movieId = seriesData.seasons[0].episodes[0].movieId;
         let savedEpisode = getSavedEpisode(movieId);
         let currentMovieData;
-
         if (savedEpisode) {
             const freshEpisodeData = seriesData.seasons
                 .flatMap(s => s.episodes)
@@ -1063,44 +1159,65 @@ async function initializeApp(optionData) {
                         video: freshEpisodeData.video,
                         locked: freshEpisodeData.locked
                     };
-                
             } else {
                 currentMovieData = seriesData.seasons[0].episodes[0];
             }
         } else {
             currentMovieData = seriesData.seasons[0].episodes[0];
         }
-
         const loadingOverlay = document.getElementById('loading-overlay');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
 
-        // --- Determine Initial Playback Quality and URL ---
+        // --- NEW: Pre-fetch and Convert Initial Episode's Video URLs to Blobs ---
+        console.log("Converting initial episode's video URLs to Blobs...");
+        try {
+            // Convert the video URLs of the INITIAL currentMovieData
+            const initialBlobMap = await convertVideoUrlsToBlobs(currentMovieData.video); // Use await here
+            // Update the currentBlobUrls tracker for the initial episode
+            currentBlobUrls = initialBlobMap;
+
+            // IMPORTANT: Update currentMovieData.video to use the Blob URLs
+            // This ensures that subsequent quality switches (even on the initial episode) use Blobs
+            for (const [key, { blobUrl }] of Object.entries(initialBlobMap)) {
+                 // Only update if conversion was successful and we got a blobUrl
+                 if (blobUrl) {
+                     currentMovieData.video[key] = blobUrl;
+                     console.log(`Updated initial currentMovieData.${key} to Blob URL: ${blobUrl}`);
+                 }
+            }
+
+        } catch (err) {
+            console.error("Failed to prepare initial video URLs (Blobs):", err);
+            document.body.innerHTML = "Error: Failed to load initial video content.";
+            return; // Stop initialization
+        }
+        // --- End Blob Conversion for Initial Episode ---
+
+
+        // --- Determine Initial Playback Quality and URL (Now using Blob URLs) ---
         const savedUserQuality = getUserQualityPreference(); // Get saved preference or null
         console.log("Saved user quality preference:", savedUserQuality);
-
         // Use the new helper function to decide URL and playback quality
+        // This will now use the Blob URLs stored in currentMovieData.video
         const initialPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, savedUserQuality);
         if (!initialPlaybackInfo && !currentMovieData.locked) {
-            console.error("No valid video sources found for the initial episode.");
+            console.error("No valid (Blob) video sources found for the initial episode.");
             document.body.innerHTML = "Error: No playable video found for this content.";
             return;
         }
-
-        let initialUrl = '';
+        let initialUrl = ''; // This will now be the initial Blob URL
         let activeQuality = ''; // This represents the quality actually used for playback
-
         if (initialPlaybackInfo) {
-            initialUrl = initialPlaybackInfo.url;
-            activeQuality = initialPlaybackInfo.quality; // Quality used for initial playback
-            console.log(`Initial playback set to quality: ${activeQuality}`);
+            initialUrl = initialPlaybackInfo.url; // This is now a Blob URL
+            activeQuality = initialPlaybackInfo.quality;
+            console.log(`Initial playback set to quality: ${activeQuality}, using Blob URL: ${initialUrl}`);
         } else if (!currentMovieData.locked) {
             // Should ideally not reach here due to earlier check, but safety net.
-            console.error("No valid video sources found for the initial episode (fallback).");
+            console.error("No valid (Blob) video sources found for the initial episode (fallback).");
             document.body.innerHTML = "Error: No playable video found for this content.";
             return;
         }
-        // --- End Initial Playback Quality Selection ---
-
+        // --- End Initial Playback Quality Selection and Blob Conversion ---
         // Assign the new Artplayer instance to the global variable
         artInstance = new Artplayer({
             container: '.artplayer-app', url: initialUrl, poster: currentMovieData.longCover,
@@ -1108,6 +1225,7 @@ async function initializeApp(optionData) {
             screenshot: false, setting: false, loop: false, autoPlayback: false, autoOrientation: true,
             antiOverlap: true, flip: false, playbackRate: false, aspectRatio: true, miniProgressBar: true,
             backdrop: true, playsInline: true, airplay: false, fullscreenWeb: false, theme: "#1FDF67",
+            type: videoType, // Use the global videoType set earlier
             moreVideoAttr: { "webkit-playsinline": true },
             layers: [
                 { name: 'topControls', html: mainTopControlsContainer, style: { position: 'absolute', width: '100%', height: 'auto', pointerEvents: 'auto' } },
@@ -1128,10 +1246,8 @@ async function initializeApp(optionData) {
             ],
             customType: { m3u8: _m, mpd: _x }
         });
-
         // Use `artInstance` from now on
         const art = artInstance;
-
         art.on('ready', () => {
             // --- DOM Element References from art.layers ---
             const actionButtonsContainer = art.layers.topControls.querySelector('#actionButtonContainer');
@@ -1156,17 +1272,14 @@ async function initializeApp(optionData) {
             const subscribeButton = lockLayer.querySelector('#subscribeButton');
             const helpButton = lockLayer.querySelector('#helpButton');
             let videoPlayedOnce = false; // Track if the video is played for once
-
             // --- Helper Functions ---
             const formatTime = (seconds) => new Date(seconds * 1000).toISOString().substr(11, 8);
-
             const animateAndRemove = (element) => {
                 if (element && !element.classList.contains('animate-out')) {
                     element.classList.add('animate-out');
                     element.addEventListener('animationend', () => element.remove(), { once: true });
                 }
             };
-
             backButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1176,7 +1289,6 @@ async function initializeApp(optionData) {
                 });
                 document.dispatchEvent(event); // dispatch globally
             };
-
             subscribeButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1186,7 +1298,6 @@ async function initializeApp(optionData) {
                 });
                 document.dispatchEvent(event); // dispatch globally
             };
-
             helpButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
                     detail: {
@@ -1196,7 +1307,6 @@ async function initializeApp(optionData) {
                 });
                 document.dispatchEvent(event); // dispatch globally
             };
-
             // --- UI Update Functions ---
             const updateUIForNewEpisode = () => {
                 const seasonEpInfoEl = art.layers.bottomInfo.querySelector('#season-episode-info');
@@ -1215,15 +1325,9 @@ async function initializeApp(optionData) {
                 }
                 if (movieTitleEl) movieTitleEl.textContent = currentMovieData.title;
                 art.poster = currentMovieData.longCover;
-                const formatSize = (sizeString) => {
-                    if (!sizeString || !sizeString.includes('MB')) return '';
-                    const sizeNumber = parseFloat(sizeString);
-                    if (isNaN(sizeNumber)) return '';
-                    return `${Math.floor(sizeNumber)} MB`;
-                };
-                art.layers.topControls.querySelector('#hdSize').textContent = formatSize(currentMovieData.size.hdSize);
-                art.layers.topControls.querySelector('#midSize').textContent = formatSize(currentMovieData.size.midSize);
-                art.layers.topControls.querySelector('#lowSize').textContent = formatSize(currentMovieData.size.lowSize);
+                art.layers.topControls.querySelector('#hdSize').textContent = currentMovieData.size.hdSize;
+                art.layers.topControls.querySelector('#midSize').textContent = currentMovieData.size.midSize;
+                art.layers.topControls.querySelector('#lowSize').textContent = currentMovieData.size.lowSize;
                 art.layers.topControls.querySelectorAll('#qualityControl .segment-button').forEach(button => {
                     const quality = button.dataset.value;
                     button.classList.remove('active', 'disabled');
@@ -1236,7 +1340,6 @@ async function initializeApp(optionData) {
                     }
                 });
             };
-
             const showSkipIntroButton = () => {
                 const introEndTime = parseInt(currentMovieData.time.startTime, 10);
                 if (actionButtonsContainer.querySelector('#skipIntroBtn') || !introEndTime || art.currentTime >= introEndTime) return;
@@ -1248,7 +1351,6 @@ async function initializeApp(optionData) {
                 actionButtonsContainer.innerHTML = '';
                 actionButtonsContainer.appendChild(wrapper);
             };
-
             const showContinueWatchingButton = () => {
                 const continueTime = currentMovieData.continueWatching.inMinutes;
                 if (actionButtonsContainer.querySelector('#continueWatchingContainer') || !continueTime) return;
@@ -1269,7 +1371,6 @@ async function initializeApp(optionData) {
                 actionButtonsContainer.innerHTML = '';
                 actionButtonsContainer.appendChild(wrapper);
             };
-
             // --- Episodes Overlay Setup ---
             const setupEpisodesOverlay = () => {
                 const episodesLayer = document.querySelector('.art-layer-episodes');
@@ -1286,7 +1387,6 @@ async function initializeApp(optionData) {
                 const backToEpisodesBtn = episodesLayer.querySelector('#backToEpisodesButton');
                 const closeSeasonsBtn = episodesLayer.querySelector('#closeSeasonsOverlay');
                 let selectedSeasonIndex = currentMovieData.position.seasonIndex;
-
                 const populateSeasonCards = () => {
                     if (!seriesData || !seasonCardList) return;
                     seasonCardList.innerHTML = '';
@@ -1309,7 +1409,6 @@ async function initializeApp(optionData) {
                         seasonCardList.appendChild(card);
                     });
                 };
-
                 const hideOverlay = () => {
                     episodesOverlay.classList.remove('visible');
                     if (artBottom) artBottom.style.visibility = 'visible';
@@ -1318,7 +1417,6 @@ async function initializeApp(optionData) {
                         episodesOverlay.classList.remove('seasons-active');
                     }, { once: true });
                 };
-
                 const populateEpisodes = (seasonIndex) => {
                     if (!seriesData || !episodesList) return;
                     const season = seriesData.seasons[seasonIndex];
@@ -1363,7 +1461,6 @@ async function initializeApp(optionData) {
                         }
                     });
                 };
-
                 if (closeEpisodesBtn && !closeEpisodesBtn.dataset.listenerAttached) {
                     closeEpisodesBtn.addEventListener('click', hideOverlay);
                     closeEpisodesBtn.dataset.listenerAttached = 'true';
@@ -1405,12 +1502,10 @@ async function initializeApp(optionData) {
                     }
                 }, 10);
             };
-
             const preventKeystrokes = (e) => {
                 e.preventDefault();
                 e.stopPropagation();
             };
-
             const showLockOverlay = () => {
                 art.pause();
                 art.fullscreen = false;
@@ -1427,10 +1522,7 @@ async function initializeApp(optionData) {
                 document.addEventListener('keydown', preventKeystrokes, true);
                 lockOverlayShown_ = true;
             };
-
-
             // --- New Helper Functions for Next Episode Card and Switching ---
-
             /**
              * @function updateNextEpisodeCard
              * @description Updates or creates the next episode card based on the current state.
@@ -1442,7 +1534,6 @@ async function initializeApp(optionData) {
             function updateNextEpisodeCard(showNext = false) {
                 const moreEpisodesContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
                 if (!moreEpisodesContainer) return;
-
                 // Clear any existing content and timers
                 moreEpisodesContainer.innerHTML = '';
                 if (window.nextEpisodeCountdownTimer) {
@@ -1464,17 +1555,14 @@ async function initializeApp(optionData) {
                     existingCard.style.borderImageSource = '';
                     existingCard.style.border = '1px solid rgba(255, 255, 255, 0.1)'; // Reset to CSS default or initial
                 }
-
                 if (!apiData.isSeason) {
                     moreEpisodesContainer.style.display = 'none';
                     return;
                 }
-
                 // Find the next episode in the same season or next season
                 let nextEpisodeData = null;
                 const currentSeasonIndex = currentMovieData.position.seasonIndex;
                 const currentEpisodeIndex = currentMovieData.position.episodeIndex;
-
                 if (currentSeasonIndex !== undefined && currentEpisodeIndex !== undefined) {
                     const currentSeason = seriesData.seasons[currentSeasonIndex];
                     if (currentSeason && currentSeason.episodes[currentEpisodeIndex + 1]) {
@@ -1488,7 +1576,6 @@ async function initializeApp(optionData) {
                     }
                     // If it's the very last episode overall, nextEpisodeData remains null
                 }
-
                 if (showNext && nextEpisodeData) {
                     // --- Show Next Episode Card with Countdown ---
                     let countdownValue = 5; // Start countdown from 5
@@ -1496,7 +1583,6 @@ async function initializeApp(optionData) {
                     const startTime = performance.now();
                     const cardId = 'next-episode-card'; // Use a different ID for clarity if needed
                     const episodeDisplay = `EP ${nextEpisodeData.episode}${nextEpisodeData.partName || ''}`;
-
                     moreEpisodesContainer.innerHTML = `
                         <div id="more-episodes-card">
                             <div class="next-episode-text">
@@ -1511,18 +1597,15 @@ async function initializeApp(optionData) {
                             </div>
                         </div>
                     `; // Reuse the same ID/class structure for styling
-
                     const nextEpisodeCard = moreEpisodesContainer.querySelector('#more-episodes-card');
                     if (nextEpisodeCard) {
                         // Ensure it's visible
                         moreEpisodesContainer.style.display = 'block';
-
                         // --- Countdown Timer Logic ---
                         const pElement = nextEpisodeCard.querySelector('.next-episode-text p');
                         if (pElement) {
                             pElement.textContent = `${episodeDisplay} | ${countdownValue}s`;
                         }
-
                         window.nextEpisodeCountdownTimer = setInterval(() => {
                             countdownValue--;
                             if (pElement) {
@@ -1535,19 +1618,16 @@ async function initializeApp(optionData) {
                                 if (nextEpisodeData && nextEpisodeData.locked) {
                                     showLockOverlay();
                                     return;
-                                    
                                 }
                                 switchToEpisode(nextEpisodeData);
                             }
                         }, 1000);
-
                         // --- Animated Border Logic ---
                         function animateBorder(timestamp) {
                             if (!startTime) startTime = timestamp;
                             const elapsed = timestamp - startTime;
                             const progress = Math.min(elapsed / borderDuration, 1);
                             const angle = 360 * progress;
-
                             // Update the border using conic-gradient
                             if (nextEpisodeCard) {
                                 const gradient = `conic-gradient(#1fdf67 ${angle}deg, rgba(255, 255, 255, 0.1) ${angle}deg 359.9deg)`;
@@ -1558,7 +1638,6 @@ async function initializeApp(optionData) {
                                 // Ensure original border is effectively removed by border-image
                                 nextEpisodeCard.style.border = 'none';
                             }
-
                             if (progress < 1 && window.nextEpisodeCountdownTimer !== null) { // Continue animation if timer is still running
                                 window.nextEpisodeBorderAnimation = requestAnimationFrame(animateBorder);
                             } else if (window.nextEpisodeCountdownTimer === null) {
@@ -1568,9 +1647,7 @@ async function initializeApp(optionData) {
                                 }
                             }
                         }
-
                         window.nextEpisodeBorderAnimation = requestAnimationFrame(animateBorder);
-
                         // --- Click Handler for Manual Switch ---
                         nextEpisodeCard.addEventListener('click', () => {
                             // Clear timer and animation if clicked
@@ -1584,11 +1661,9 @@ async function initializeApp(optionData) {
                             }
                             switchToEpisode(nextEpisodeData);
                         });
-
                     } else {
                         moreEpisodesContainer.style.display = 'none'; // Hide if card creation failed
                     }
-
                 } else if (!showNext) {
                     // --- Show Standard "More Episodes" Card ---
                     if (nextEpisodeData) { // Only show if there *is* a next episode
@@ -1628,9 +1703,10 @@ async function initializeApp(optionData) {
              * @description Handles the logic for switching to a new episode.
              * @param {Object} ep - The episode data object to switch to.
              */
-            function switchToEpisode(ep) {
+            async function switchToEpisode(ep) { // Make function async
                 if (!ep) return;
 
+                // --- Blob Cleanup for Previous Episode ---
                 // Clear any active timers/borders related to the *previous* next episode card
                 if (window.nextEpisodeCountdownTimer) {
                     clearInterval(window.nextEpisodeCountdownTimer);
@@ -1641,29 +1717,66 @@ async function initializeApp(optionData) {
                     window.nextEpisodeBorderAnimation = null;
                 }
 
+                // Revoke Blobs for the *current* (soon to be old) episode
+                console.log("Revoking Blob URLs for previous episode...");
+                revokeBlobUrls(currentBlobUrls);
+                currentBlobUrls = {}; // Reset the map for the new episode
+                // --- End Blob Cleanup ---
+
+                // --- Update Current Movie Data ---
                 currentMovieData = ep;
                 saveEpisodeProgress(currentMovieData);
+                // --- End Update Current Movie Data ---
 
-                // --- Determine Playback Quality and URL for New Episode ---
+                // --- Pre-fetch and Convert New Episode's Video URLs to Blobs ---
+                console.log("Converting new episode's video URLs to Blobs...");
+                try {
+                    // Convert the video URLs of the NEW currentMovieData
+                    const newBlobMap = await convertVideoUrlsToBlobs(currentMovieData.video);
+                    // Update the currentBlobUrls tracker
+                    currentBlobUrls = newBlobMap;
+
+                    // IMPORTANT: Update currentMovieData.video to use the Blob URLs
+                    // This ensures that subsequent quality switches use the Blob URLs directly
+                    for (const [key, { blobUrl }] of Object.entries(newBlobMap)) {
+                         // Only update if conversion was successful and we got a blobUrl
+                         if (blobUrl) {
+                             currentMovieData.video[key] = blobUrl;
+                             console.log(`Updated currentMovieData.${key} to Blob URL: ${blobUrl}`);
+                         }
+                    }
+                } catch (err) {
+                    console.error("Error during Blob conversion for new episode:", err);
+                     art.notice.show = "Error preparing video streams. Playback might be affected.";
+                     // Consider fallback or stopping here if critical
+                }
+                // --- End Blob Conversion ---
+
+                // --- Determine Playback Quality and URL (Now using Blob URLs) ---
                 const savedUserQualityForSwitch = getUserQualityPreference();
                 console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
-                const switchPlaybackInfo = determinePlaybackQualityAndUrl(ep, savedUserQualityForSwitch);
-                let newUrl = '';
+                // determinePlaybackQualityAndUrl now uses the Blob URLs in currentMovieData.video
+                const switchPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, savedUserQualityForSwitch);
+                let newUrl = ''; // This should now be a Blob URL
                 activeQuality = ''; // Reset active quality tracker
-
                 if (switchPlaybackInfo) {
-                    newUrl = switchPlaybackInfo.url;
+                    newUrl = switchPlaybackInfo.url; // This is now a Blob URL from currentMovieData.video
                     activeQuality = switchPlaybackInfo.quality;
-                    console.log(`Switching to episode with playback quality: ${activeQuality}`);
+                    console.log(`Switching to episode with playback quality: ${activeQuality}, using Blob URL: ${newUrl}`);
                 } else if (!ep.locked) {
-                    console.error("No valid URL for the selected episode.");
+                    console.error("No valid (Blob) URL for the selected episode.");
                     art.notice.show = "Error: No playable video found for the selected episode.";
                     return;
                 }
+                // --- End Playback Quality Selection ---
 
-                // --- End Playback Quality Selection for New Episode ---
                 if (newUrl) {
+                    // Show loading indicator if Artplayer has one (optional, as fetch is done)
+                    // if (art.loading) art.loading.show = true;
+
+                    // Use the pre-fetched Blob URL directly
                     art.switchUrl(newUrl, currentMovieData.title).then(() => {
+                        // if (art.loading) art.loading.show = false; // Hide loading indicator
                         art.play();
                         updateUIForNewEpisode();
                         actionButtonsContainer.innerHTML = '';
@@ -1675,13 +1788,14 @@ async function initializeApp(optionData) {
                         // Update the next episode card (now for the *new* current episode)
                         updateNextEpisodeCard(false); // Show standard card for the new episode
                     }).catch(err => {
-                        console.error("Failed to switch to new episode URL:", err);
+                        // if (art.loading) art.loading.show = false; // Hide loading indicator
+                        console.error("Failed to switch to new episode URL (Blob):", err);
                         art.notice.show = "Failed to load the selected episode.";
                     });
                 } else if (ep.locked) {
                     showLockOverlay();
                 } else {
-                    console.error("No valid URL for this episode (should have been caught earlier)");
+                    console.error("No valid Blob URL for this episode (should have been caught earlier)");
                 }
             }
 
@@ -1693,11 +1807,9 @@ async function initializeApp(optionData) {
             updateUIForNewEpisode();
             if (currentMovieData.continueWatching.inMinutes > 0) showContinueWatchingButton();
             else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
-
             // --- Modify the Initial Setup Section ---
             // Call the new function to set up the initial card
             updateNextEpisodeCard(false); // Initially show the standard card if applicable
-
             // --- Layout and Resize Handlers ---
             const syncWidths = () => { if (qualityControlContainer && actionButtonsContainer) { const qualityWidth = qualityControlContainer.offsetWidth; actionButtonsContainer.style.width = `${qualityWidth}px`; } };
             const updateActionButtonPosition = () => { if (actionButtonsContainer) { if (window.innerWidth > 480) { actionButtonsContainer.style.position = 'relative'; actionButtonsContainer.style.right = '33px'; } else { actionButtonsContainer.style.position = 'static'; actionButtonsContainer.style.right = 'auto'; } } };
@@ -1708,7 +1820,6 @@ async function initializeApp(optionData) {
             if (qualityControlContainer) resizeObserverInstance.observe(qualityControlContainer);
             resizeHandler = updateActionButtonPosition;
             window.addEventListener('resize', resizeHandler);
-
             // --- Event Listeners for Main Controls ---
             if (rewindButton) rewindButton.addEventListener('click', () => { art.seek = art.currentTime - 30; });
             if (forwardButton) forwardButton.addEventListener('click', () => { art.seek = art.currentTime + 30; });
@@ -1724,42 +1835,56 @@ async function initializeApp(optionData) {
                     volumeIconPathEl.setAttribute('d', isMuted ? volumeOffIconPath : volumeOnIconPath);
                 });
             }
-
             if (qualityControlContainer) {
                 qualityControlContainer.querySelectorAll('.segment-button').forEach(button => {
                     button.addEventListener('click', () => {
                         if (button.classList.contains('disabled') || button.classList.contains('active')) return;
                         const chosenQuality = button.dataset.value; // Quality the user explicitly chose
-                        const newUrl = currentMovieData.video[`${chosenQuality}Video`];
-                        if (newUrl && !newUrl.includes('not found')) {
-                            art.switchQuality(newUrl, currentMovieData.title).then(() => {
-                                activeQuality = chosenQuality; // Update the playback quality tracker
+
+                        // --- Use Blob URL directly from currentMovieData ---
+                        // determinePlaybackQualityAndUrl now uses Blob URLs if they were set
+                        const switchPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, chosenQuality);
+
+                        if (switchPlaybackInfo) {
+                            const newBlobUrl = switchPlaybackInfo.url; // This should be the Blob URL
+                            const qualityForLogging = switchPlaybackInfo.quality;
+                            // Show loading indicator if Artplayer has one (optional for Blob switch)
+                            // if (art.loading) art.loading.show = true;
+
+                            // Use the pre-fetched Blob URL directly
+                            art.switchQuality(newBlobUrl, currentMovieData.title).then(() => {
+                                // if (art.loading) art.loading.show = false; // Hide loading indicator
+                                activeQuality = qualityForLogging; // Update the playback quality tracker
                                 saveUserQualityPreference(chosenQuality); // *** SAVE USER CHOICE ***
                                 updateUIForNewEpisode(); // This will update the active button based on `activeQuality`
                             }).catch(err => {
-                                console.error("Failed to switch quality:", err);
-                                art.notice.show = "Failed to switch quality.";
+                                // if (art.loading) art.loading.show = false; // Hide loading indicator
+                                console.error("Failed to switch quality (using Blob URL):", err);
+                                art.notice.show = `Failed to switch to ${chosenQuality.toUpperCase()} quality.`;
                             });
                         } else {
-                            art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
+                            // Check the specific URL that failed
+                            const specificUrl = currentMovieData.video[`${chosenQuality}Video`];
+                            if (!specificUrl || specificUrl.includes('not found')) {
+                                 art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
+                            } else {
+                                 art.notice.show = `Error preparing ${chosenQuality.toUpperCase()} quality.`;
+                            }
                         }
+                        // --- End Use Blob URL ---
                     });
                 });
             }
-
             // --- ArtPlayer Event Hooks ---
             art.on('play', () => {
                 if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
             });
-
             art.on('pause', () => {
                 //isPlaying = false; // Set the flag to false when the video is paused
                 setTimeout(function () {
                     if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
                 }, 100);
-
             });
-
             art.on('control', state => {
                 if (lockLayer.style.display === 'flex') return;
                 mainControlsContainer.classList.toggle('hidden', !state);
@@ -1767,7 +1892,6 @@ async function initializeApp(optionData) {
                 bottomLeftInfo.classList.toggle('hidden', !state);
                 moreEpisodesContainer.classList.toggle('hidden', !state);
             });
-
             art.on('fullscreen', (isFull) => {
                 if (fullscreenButton) {
                     const fsIcon = fullscreenButton.querySelector('svg path');
@@ -1776,21 +1900,16 @@ async function initializeApp(optionData) {
                     fsIcon.setAttribute('d', isFull ? exitFsIcon : enterFsIcon);
                 }
             });
-
             let lastSaveTime = 0;
             let movieRemoved = false;
-
             art.on('video:timeupdate', () => {
                 if (videoPlayedOnce === false) {
                     videoPlayedOnce = true; // Set the flag to true after the first play
                     if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
                 }
-
                 if (currentMovieData.locked == true && !lockOverlayShown_ && currentMovieData.type == 'S') {
                     showLockOverlay();
-                    
                 }
-
                 let percentage = (art.currentTime / art.duration) * 100;
                 if (percentage > 50 && currentMovieData.type == 'M' && currentMovieData.locked == true) {
                     art.pause();
@@ -1819,13 +1938,11 @@ async function initializeApp(optionData) {
                 const continueContainer = actionButtonsContainer.querySelector('#continueWatchingContainer');
                 const continueTime = currentMovieData.continueWatching.inMinutes;
                 if (continueContainer && continueTime && art.currentTime > continueTime + 10) animateAndRemove(continueContainer);
-
                 // --- Add this new logic for endTime and video ended ---
                 // Flag to track if the next episode card has been shown for this playback
                 if (typeof window.nextEpisodeCardShown === 'undefined') {
                     window.nextEpisodeCardShown = false;
                 }
-
                 // Check for endTime to show Next Episode card (only for series)
                 const endTime = parseInt(currentMovieData.time?.endTime, 10);
                 if (!isNaN(endTime) && art.currentTime >= endTime && !window.nextEpisodeCardShown && apiData.isSeason) {
@@ -1834,16 +1951,13 @@ async function initializeApp(optionData) {
                     window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
                 }
             });
-
             // --- Add this block for handling video end ---
             // This will trigger if there's no endTime or if the user watches past the endTime
             art.on('video:ended', () => {
                 console.log("Video ended.");
                 updateNextEpisodeCard(true); // Show the next episode card with countdown
                 window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
-
             });
-
         });
     } catch (error) {
         const event = new CustomEvent('playerAction', {
