@@ -1058,15 +1058,12 @@ async function initializeApp(optionData) {
                 .flatMap(s => s.episodes)
                 .find(ep => ep.episodeId === savedEpisode.episodeId);
             if (freshEpisodeData) {
-                if (freshEpisodeData.locked) {
-                    currentMovieData = freshEpisodeData;
-                } else {
                     currentMovieData = {
                         ...savedEpisode,
                         video: freshEpisodeData.video,
                         locked: freshEpisodeData.locked
                     };
-                }
+                
             } else {
                 currentMovieData = seriesData.seasons[0].episodes[0];
             }
@@ -1158,6 +1155,7 @@ async function initializeApp(optionData) {
             const totalTimeDisplay = art.controls.totalTime;
             const subscribeButton = lockLayer.querySelector('#subscribeButton');
             const helpButton = lockLayer.querySelector('#helpButton');
+            let videoPlayedOnce = false; // Track if the video is played for once
 
             // --- Helper Functions ---
             const formatTime = (seconds) => new Date(seconds * 1000).toISOString().substr(11, 8);
@@ -1534,6 +1532,11 @@ async function initializeApp(optionData) {
                                 clearInterval(window.nextEpisodeCountdownTimer);
                                 window.nextEpisodeCountdownTimer = null;
                                 // Trigger episode switch when countdown finishes
+                                if (nextEpisodeData && nextEpisodeData.locked) {
+                                    showLockOverlay();
+                                    return;
+                                    
+                                }
                                 switchToEpisode(nextEpisodeData);
                             }
                         }, 1000);
@@ -1750,7 +1753,11 @@ async function initializeApp(optionData) {
             });
 
             art.on('pause', () => {
-                if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
+                //isPlaying = false; // Set the flag to false when the video is paused
+                setTimeout(function () {
+                    if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
+                }, 100);
+
             });
 
             art.on('control', state => {
@@ -1774,9 +1781,17 @@ async function initializeApp(optionData) {
             let movieRemoved = false;
 
             art.on('video:timeupdate', () => {
-                if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                if (videoPlayedOnce === false) {
+                    videoPlayedOnce = true; // Set the flag to true after the first play
+                    if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                }
+
+                if (currentMovieData.locked == true && !lockOverlayShown_ && currentMovieData.type == 'S') {
+                    showLockOverlay();
+                    
+                }
+
                 let percentage = (art.currentTime / art.duration) * 100;
-                console.log(`Percentage: ${percentage}%`);
                 if (percentage > 50 && currentMovieData.type == 'M' && currentMovieData.locked == true) {
                     art.pause();
                     if (lockOverlayShown_ == false) {
@@ -1824,45 +1839,9 @@ async function initializeApp(optionData) {
             // This will trigger if there's no endTime or if the user watches past the endTime
             art.on('video:ended', () => {
                 console.log("Video ended.");
-                // Find the next episode (same logic as in updateNextEpisodeCard)
-                let nextEpisodeData = null;
-                const currentSeasonIndex = currentMovieData.position.seasonIndex;
-                const currentEpisodeIndex = currentMovieData.position.episodeIndex;
+                updateNextEpisodeCard(true); // Show the next episode card with countdown
+                window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
 
-                if (currentSeasonIndex !== undefined && currentEpisodeIndex !== undefined) {
-                    const currentSeason = seriesData.seasons[currentSeasonIndex];
-                    if (currentSeason && currentSeason.episodes[currentEpisodeIndex + 1]) {
-                        nextEpisodeData = currentSeason.episodes[currentEpisodeIndex + 1];
-                    } else if (currentSeason && currentSeason.episodes.length - 1 === currentEpisodeIndex) {
-                        if (seriesData.seasons[currentSeasonIndex + 1] && seriesData.seasons[currentSeasonIndex + 1].episodes[0]) {
-                            nextEpisodeData = seriesData.seasons[currentSeasonIndex + 1].episodes[0];
-                        }
-                    }
-                }
-
-                if (nextEpisodeData) {
-                    // If there's a next episode, switch to it automatically
-                    console.log("Switching to next episode automatically after video end.");
-                    switchToEpisode(nextEpisodeData); // Use the new switch function
-                } else {
-                    // Optionally handle the case where it's the last episode
-                    console.log("This is the last episode.");
-                    // E.g., show a message, hide the card, navigate back etc.
-                    const moreEpisodesContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
-                    if (moreEpisodesContainer) {
-                        // Clear timer/border if card was shown
-                        if (window.nextEpisodeCountdownTimer) {
-                            clearInterval(window.nextEpisodeCountdownTimer);
-                            window.nextEpisodeCountdownTimer = null;
-                        }
-                        if (window.nextEpisodeBorderAnimation) {
-                            cancelAnimationFrame(window.nextEpisodeBorderAnimation);
-                            window.nextEpisodeBorderAnimation = null;
-                        }
-                        moreEpisodesContainer.style.display = 'none'; // Hide the card
-                        // art.notice.show = "You've finished the series!"; // Optional notice
-                    }
-                }
             });
 
         });
@@ -1876,7 +1855,3 @@ async function initializeApp(optionData) {
         console.error('Failed to initialize player:', error);
     }
 }
-
-// Example of how to start the application
-//initializeApp();
-// destroyApp();
