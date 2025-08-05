@@ -2,15 +2,98 @@
 let artInstance = null;
 let resizeObserverInstance = null;
 let resizeHandler = null;
+let tempData = {};
 /**
  * @function destroyApp
  * @description Destroys the ArtPlayer instance, removes dynamically added styles,
  * and cleans up event listeners to prevent memory leaks and element duplication
  * when re-initializing the player.
  */
+let sData = {
+    databaseName: "",
+    _id: '',
+    startTime: "",
+    endTime: "",
+    totalTime: "",
+
+};
+let eData = {
+    databaseName: "",
+    _id: '',
+    startTime: "",
+    endTime: "",
+    totalTime: "",
+
+};
+// Function to handle keypress events for S and E keys
+function saveMovieData(sData, eData) {
+    // Save the movie data to the global savingData object
+    if (sData._id == eData._id) {
+        const event = new CustomEvent('playerAction', {
+            detail: {
+                action: 'saveTime',
+                data: {
+                    databaseName: eData.databaseName,
+                    _id: eData._id,
+                    startTime: sData.startTime,
+                    endTime: eData.endTime,
+                    totalTime: eData.totalTime,
+                }
+            }
+        });
+        document.dispatchEvent(event); // dispatch globally
+    }
+}
+
+function handleKeyPress(event) {
+    // Convert to lowercase to handle both upper and lower case
+    const key = event.key.toLowerCase();
+    function formatSecondsToHHMMSS(inputSeconds) {
+        const totalSeconds = Math.floor(Number(inputSeconds)); // Convert to number and remove any decimals
+
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        const pad = (num) => String(num).padStart(2, '0');
+
+        return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+    }
+
+    switch (key) {
+        case 's':
+            // Add your logic for S key here
+            sData = {
+                databaseName: "Season" + (Number(tempData.position.seasonIndex) + 1),
+                _id: tempData.episodeId,
+                startTime: artInstance.currentTime,
+                endTime: 0,
+                totalTime: formatSecondsToHHMMSS(artInstance.duration),
+            };
+            break;
+
+        case 'e':
+            // Add your logic for E key here
+            eData = {
+                databaseName: "Season" + (Number(tempData.position.seasonIndex) + 1),
+                _id: tempData.episodeId,
+                startTime: 0,
+                endTime: artInstance.currentTime,
+                totalTime: formatSecondsToHHMMSS(artInstance.duration),
+            };
+            saveMovieData(sData, eData);
+            break;
+
+        default:
+            // Optional: handle other keys or do nothing
+            break;
+    }
+}
+
 function destroyApp() {
     //console.log("Destroying existing player instance if it exists...");
     // 1. Destroy the ArtPlayer instance if it exists
+    document.removeEventListener('keydown', handleKeyPress);
     if (artInstance) {
         try {
             // The `true` argument also removes the player's root element from the DOM
@@ -100,6 +183,7 @@ let videoType = 'm3u8'; // Default video type, can be overridden
  * @returns {{url: string, quality: string}|null} Object containing the URL and the quality used for playback, or null if no URL found.
  */
 function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
+    tempData = movieData; // Store movieData in a global variable for later use
     const qualityOrder = ['hd', 'mid', 'low'];
     const videoData = movieData.video;
     if (!videoData) {
@@ -183,42 +267,12 @@ function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
     // --- End Determine and Set videoType ---
 
     if (selectedUrl && selectedQuality) {
-         return { url: selectedUrl, quality: selectedQuality };
+        return { url: selectedUrl, quality: selectedQuality };
     } else {
         return null;
     }
 }
 
-// --- Blob Management (No longer used for conversion, but kept for potential cleanup) ---
-/**
- * Stores the current Blob URLs associated with a movieData's video object.
- * Used for cleanup when switching episodes.
- * (No longer used for conversion)
- */
-let currentBlobUrls = {}; // Kept for potential cleanup calls
-
-/**
- * Revokes the Blob URLs stored in the provided map.
- * (No longer used for conversion, but kept for potential cleanup)
- * @param {Object} blobMap - An object mapping keys to { blobUrl, mimeType } (e.g., output from convertVideoUrlsToBlobs).
- */
-function revokeBlobUrls(blobMap) {
-    //console.log("Blob revocation skipped (Blobs disabled).");
-    // No action needed as we are not using Blob URLs anymore
-    // If you want to keep the possibility of cleanup, you can leave the original revoke logic
-    // but it will likely not be called or will operate on empty maps.
-    // if (!blobMap || typeof blobMap !== 'object') return;
-    // for (const [, { blobUrl }] of Object.entries(blobMap)) {
-    //     if (blobUrl && blobUrl.startsWith('blob:')) {
-    //         try {
-    //             URL.revokeObjectURL(blobUrl);
-    //             //console.log(`Revoked Blob URL: ${blobUrl}`);
-    //         } catch (e) {
-    //             console.warn(`Failed to revoke Blob URL: ${blobUrl}`, e);
-    //         }
-    //     }
-    // }
-}
 // --- End Blob Management (No longer used for conversion) ---
 
 // --- UI Component HTML Strings ---
@@ -1099,11 +1153,11 @@ async function initializeApp(optionData) {
                 .flatMap(s => s.episodes)
                 .find(ep => ep.episodeId === savedEpisode.episodeId);
             if (freshEpisodeData) {
-                    currentMovieData = {
-                        ...savedEpisode,
-                        video: freshEpisodeData.video,
-                        locked: freshEpisodeData.locked
-                    };
+                currentMovieData = {
+                    ...savedEpisode,
+                    video: freshEpisodeData.video,
+                    locked: freshEpisodeData.locked
+                };
             } else {
                 currentMovieData = seriesData.seasons[0].episodes[0];
             }
@@ -1161,7 +1215,7 @@ async function initializeApp(optionData) {
             ],
             controls: [
                 { name: 'currentTime', position: 'left', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '1rem', paddingLeft: '10px' } },
-                { name: 'totalTime', position: 'right', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '1rem', paddingRight: '10px' } }
+                { name: 'totalTime', position: 'right', html: '00:00:00', style: { color: 'white', fontFamily: 'system-ui', fontSize: '1rem', paddingRight: '10px' } },
             ],
             plugins: currentMovieData.adstatus === false ? [] : [
                 artplayerPluginAds({
@@ -1174,6 +1228,8 @@ async function initializeApp(optionData) {
         // Use `artInstance` from now on
         const art = artInstance;
         art.on('ready', () => {
+            // Add event listener to the document
+            document.addEventListener('keydown', handleKeyPress);
             // --- DOM Element References from art.layers ---
             const actionButtonsContainer = art.layers.topControls.querySelector('#actionButtonContainer');
             const qualityControlContainer = art.layers.topControls.querySelector('#qualityControl');
@@ -1209,7 +1265,7 @@ async function initializeApp(optionData) {
                 const event = new CustomEvent('playerAction', {
                     detail: {
                         action: 'backButton',
-                        data: 'ready'
+                        data: {}
                     }
                 });
                 document.dispatchEvent(event); // dispatch globally
@@ -1218,7 +1274,7 @@ async function initializeApp(optionData) {
                 const event = new CustomEvent('playerAction', {
                     detail: {
                         action: 'subscribeButton',
-                        data: 'ready'
+                        data: {}
                     }
                 });
                 document.dispatchEvent(event); // dispatch globally
@@ -1227,7 +1283,7 @@ async function initializeApp(optionData) {
                 const event = new CustomEvent('playerAction', {
                     detail: {
                         action: 'helpButton',
-                        data: 'ready'
+                        data: {}
                     }
                 });
                 document.dispatchEvent(event); // dispatch globally
@@ -1445,6 +1501,7 @@ async function initializeApp(optionData) {
                 }
                 lockLayer.style.display = 'flex';
                 document.addEventListener('keydown', preventKeystrokes, true);
+                document.removeEventListener('keydown', handleKeyPress);
                 lockOverlayShown_ = true;
             };
             // --- New Helper Functions for Next Episode Card and Switching ---
@@ -1768,9 +1825,9 @@ async function initializeApp(optionData) {
                             // Check the specific URL that failed
                             const specificUrl = currentMovieData.video[`${chosenQuality}Video`];
                             if (!specificUrl || specificUrl.includes('not found')) {
-                                 art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
+                                art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
                             } else {
-                                 art.notice.show = `Error preparing ${chosenQuality.toUpperCase()} quality.`;
+                                art.notice.show = `Error preparing ${chosenQuality.toUpperCase()} quality.`;
                             }
                         }
                         // --- End Use Original URL ---
@@ -1865,7 +1922,7 @@ async function initializeApp(optionData) {
         const event = new CustomEvent('playerAction', {
             detail: {
                 action: 'backButton',
-                data: 'ready'
+                data: {}
             }
         });
         console.error('Failed to initialize player:', error);
