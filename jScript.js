@@ -1285,15 +1285,7 @@ async function initializeApp(optionData) {
                 document.dispatchEvent(event); // dispatch globally
             };
             subscribeButton.onclick = () => {
-                const event = new CustomEvent('playerAction', {
-                    detail: {
-                        action: 'subscribeButton',
-                        data: {
-                            id: optionData.movieId,
-                        }
-                    }
-                });
-                document.dispatchEvent(event); // dispatch globally
+                window.location.assign(`/kwishyura?vd=${optionData.movieId}`);
             };
             helpButton.onclick = () => {
                 const event = new CustomEvent('playerAction', {
