@@ -69,7 +69,7 @@ function handleKeyPress(event) {
         case 's':
             // Add your logic for S key here
             sData = {
-                databaseName: "Season" + (Number(tempData.position.seasonIndex) + 1),
+                databaseName: tempData.type == "S" ? "Season" + (Number(tempData.position.seasonIndex) + 1) : "Items",
                 _id: tempData.episodeId,
                 startTime: artInstance.currentTime,
                 endTime: 0,
@@ -79,7 +79,7 @@ function handleKeyPress(event) {
         case 'e':
             // Add your logic for E key here
             eData = {
-                databaseName: "Season" + (Number(tempData.position.seasonIndex) + 1),
+                databaseName: tempData.type == "S" ? "Season" + (Number(tempData.position.seasonIndex) + 1) : "Items",
                 _id: tempData.episodeId,
                 startTime: 0,
                 endTime: artInstance.currentTime,
@@ -1039,6 +1039,8 @@ function _x(video, url, art) {
     }
 }
 async function initializeApp(optionData) {
+    window.movieId = optionData.movieId;
+    window.language = optionData.language;
     languageCode = optionData.language == 'en' ? 'en' : 'rw';
     let lockOverlayShown_ = false;
     // --- Ad Tracking Flags (inside initializeApp, outside art.on('ready')) ---
@@ -1286,7 +1288,9 @@ async function initializeApp(optionData) {
                 const event = new CustomEvent('playerAction', {
                     detail: {
                         action: 'subscribeButton',
-                        data: {}
+                        data: {
+                            id: optionData.movieId,
+                        }
                     }
                 });
                 document.dispatchEvent(event); // dispatch globally
