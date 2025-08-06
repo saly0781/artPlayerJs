@@ -1455,6 +1455,7 @@ async function initializeApp(optionData) {
                                 closeEpisodesBtn.dataset.listenerAttached = 'true';
                                 // Use the new switch function
                                 switchToEpisode(ep);
+                                hideOverlay();
                             });
                             episodesList.appendChild(card);
                         }
@@ -1774,6 +1775,7 @@ async function initializeApp(optionData) {
                         else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
                         // Update the next episode card (now for the *new* current episode)
                         updateNextEpisodeCard(false); // Show standard card for the new episode
+                        
                     }).catch(err => {
                         // if (art.loading) art.loading.show = false; // Hide loading indicator
                         console.error("Failed to switch to new episode URL (Original):", err);
