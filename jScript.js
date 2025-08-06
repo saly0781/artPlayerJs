@@ -3,6 +3,7 @@ let artInstance = null;
 let resizeObserverInstance = null;
 let resizeHandler = null;
 let tempData = {};
+let languageCode = 'en'; // Default language code, can be overridden
 /**
  * @function destroyApp
  * @description Destroys the ArtPlayer instance, removes dynamically added styles,
@@ -15,7 +16,6 @@ let sData = {
     startTime: "",
     endTime: "",
     totalTime: "",
-
 };
 let eData = {
     databaseName: "",
@@ -23,12 +23,22 @@ let eData = {
     startTime: "",
     endTime: "",
     totalTime: "",
-
 };
 // Function to handle keypress events for S and E keys
-function saveMovieData(sData, eData) {
+async function saveMovieData(sData, eData) {
     // Save the movie data to the global savingData object
     if (sData._id == eData._id) {
+        const response = await fetch("https://dataapis.wixsite.com/platformdata/_functions/updatedata", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                "databaseName": eData.databaseName,
+                "_id": eData._id,
+                "startTime": sData.startTime,
+                "endTime": eData.endTime,
+                "totalTime": eData.totalTime
+            })
+        });
         const event = new CustomEvent('playerAction', {
             detail: {
                 action: 'saveTime',
@@ -44,22 +54,17 @@ function saveMovieData(sData, eData) {
         document.dispatchEvent(event); // dispatch globally
     }
 }
-
 function handleKeyPress(event) {
     // Convert to lowercase to handle both upper and lower case
     const key = event.key.toLowerCase();
     function formatSecondsToHHMMSS(inputSeconds) {
         const totalSeconds = Math.floor(Number(inputSeconds)); // Convert to number and remove any decimals
-
         const hours = Math.floor(totalSeconds / 3600);
         const minutes = Math.floor((totalSeconds % 3600) / 60);
         const seconds = totalSeconds % 60;
-
         const pad = (num) => String(num).padStart(2, '0');
-
         return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
     }
-
     switch (key) {
         case 's':
             // Add your logic for S key here
@@ -71,7 +76,6 @@ function handleKeyPress(event) {
                 totalTime: formatSecondsToHHMMSS(artInstance.duration),
             };
             break;
-
         case 'e':
             // Add your logic for E key here
             eData = {
@@ -83,13 +87,11 @@ function handleKeyPress(event) {
             };
             saveMovieData(sData, eData);
             break;
-
         default:
             // Optional: handle other keys or do nothing
             break;
     }
 }
-
 function destroyApp() {
     //console.log("Destroying existing player instance if it exists...");
     // 1. Destroy the ArtPlayer instance if it exists
@@ -171,7 +173,6 @@ function saveUserQualityPreference(quality) {
 }
 // --- Global variable for video type ---
 let videoType = 'm3u8'; // Default video type, can be overridden
-
 /**
  * @function determinePlaybackQualityAndUrl
  * @description Determines the best quality URL to use for playback based on user preference and availability.
@@ -192,10 +193,8 @@ function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
         videoType = 'm3u8';
         return null;
     }
-
     let selectedUrl = null;
     let selectedQuality = null;
-
     // 1. If user has a specific preference saved, try to honor it first.
     if (preferredQuality) {
         const preferredUrlKey = `${preferredQuality}Video`;
@@ -242,7 +241,6 @@ function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
             }
         }
     }
-
     // --- Determine and Set videoType based on the selected URL ---
     if (selectedUrl) {
         const lowerSelectedUrl = selectedUrl.toLowerCase();
@@ -265,16 +263,13 @@ function determinePlaybackQualityAndUrl(movieData, preferredQuality) {
         videoType = 'm3u8';
     }
     // --- End Determine and Set videoType ---
-
     if (selectedUrl && selectedQuality) {
         return { url: selectedUrl, quality: selectedQuality };
     } else {
         return null;
     }
 }
-
 // --- End Blob Management (No longer used for conversion) ---
-
 // --- UI Component HTML Strings ---
 const controlsPlayAndPauseElement = `
                                 <div id="playbackControlsContainer">
@@ -1044,7 +1039,15 @@ function _x(video, url, art) {
     }
 }
 async function initializeApp(optionData) {
+    languageCode = optionData.language == 'en' ? 'en' : 'rw';
     let lockOverlayShown_ = false;
+    // --- Ad Tracking Flags (inside initializeApp, outside art.on('ready')) ---
+    let preAdShown = false;
+    let midAdShown = false;
+    let postAdShown = false;
+    let isAdPlaying = false;
+    // --- End Ad Tracking Flags ---
+
     const episodesOverlayHtml = `
                 <div id="episodesOverlay">
                     <div id="episodesView">
@@ -1110,6 +1113,7 @@ async function initializeApp(optionData) {
                 episodes: apiData.data.episodes[index]
             }))
         };
+        allLolls = apiData.ads
         const CONTINUE_WATCHING_KEY = 'continuewatching';
         const getContinueWatchingList = () => {
             const savedData = localStorage.getItem(CONTINUE_WATCHING_KEY);
@@ -1166,11 +1170,9 @@ async function initializeApp(optionData) {
         }
         const loadingOverlay = document.getElementById('loading-overlay');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
-
         // --- Determine Initial Playback Quality and URL (Now using Original URLs) ---
         const savedUserQuality = getUserQualityPreference(); // Get saved preference or null
         //console.log("Saved user quality preference:", savedUserQuality);
-
         // Use the updated helper function to decide URL, playback quality, and set videoType
         // This will now use the original URLs from currentMovieData.video and set videoType
         const initialPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, savedUserQuality);
@@ -1181,7 +1183,6 @@ async function initializeApp(optionData) {
         }
         let initialUrl = ''; // This will now be the initial Original URL
         let activeQuality = ''; // This represents the quality actually used for playback
-
         if (initialPlaybackInfo) {
             initialUrl = initialPlaybackInfo.url; // This is now an Original URL
             activeQuality = initialPlaybackInfo.quality;
@@ -1194,7 +1195,6 @@ async function initializeApp(optionData) {
             return;
         }
         // --- End Initial Playback Quality Selection (No more Blob Conversion) ---
-
         // Assign the new Artplayer instance to the global variable
         artInstance = new Artplayer({
             container: '.artplayer-app',
@@ -1219,8 +1219,19 @@ async function initializeApp(optionData) {
             ],
             plugins: currentMovieData.adstatus === false ? [] : [
                 artplayerPluginAds({
-                    html: '<img src="" alt="Ad Poster">', video: allLolls[0], url: "", playDuration: 48, totalDuration: 50,
-                    i18n: { close: optionData.language != 'en' ? 'Taruka' : 'Skip Ad', countdown: optionData.language != 'en' ? 'Kanda Hano' : 'Click Here', detail: optionData.language != 'en' ? 'Kwamamaza' : 'Ad', canBeClosed: optionData.language != 'en' ? '%s | Kwishyura?' : '%s | To Pay?' },
+                    html: '<img src="" alt="Ad Poster">',
+                    // Use preLoll for initial plugin setup
+                    video: allLolls[0],
+                    url: "",
+                    // Adjust durations based on lock status (assuming locked means longer ad)
+                    playDuration: 48,
+                    totalDuration: 50,
+                    i18n: {
+                        close: optionData.language != 'en' ? 'Taruka' : 'Skip Ad',
+                        countdown: optionData.language != 'en' ? 'Kanda Hano' : 'Click Here',
+                        detail: optionData.language != 'en' ? 'Kwamamaza' : 'Ad',
+                        canBeClosed: optionData.language != 'en' ? '%s | Kwishyura?' : '%s | To Pay?'
+                    },
                 }),
             ],
             customType: { m3u8: _m, mpd: _x }
@@ -1229,6 +1240,7 @@ async function initializeApp(optionData) {
         const art = artInstance;
         art.on('ready', () => {
             // Add event listener to the document
+            const adPlugin = art.plugins.artplayerPluginAds;
             document.addEventListener('keydown', handleKeyPress);
             // --- DOM Element References from art.layers ---
             const actionButtonsContainer = art.layers.topControls.querySelector('#actionButtonContainer');
@@ -1435,6 +1447,8 @@ async function initializeApp(optionData) {
                                 }
                                 card.classList.add('bouncing');
                                 card.addEventListener('animationend', () => card.classList.remove('bouncing'), { once: true });
+                                closeEpisodesBtn.addEventListener('click', hideOverlay);
+                                closeEpisodesBtn.dataset.listenerAttached = 'true';
                                 // Use the new switch function
                                 switchToEpisode(ep);
                             });
@@ -1490,6 +1504,12 @@ async function initializeApp(optionData) {
             const showLockOverlay = () => {
                 art.pause();
                 art.fullscreen = false;
+                // --- Handle blockedLoll on lock overlay show ---
+                if (currentMovieData.adstatus === true) {
+                    // console.log("Showing lock overlay, triggering blockedLoll ad");
+                    playBlockedLollAd(allLolls[3]); // Play blockedLoll immediately
+                }
+                // --- End blockedLoll Handling ---
                 mainControlsContainer.style.display = 'none';
                 playbackControlsContainer.style.display = 'none';
                 bottomLeftInfo.style.display = 'none';
@@ -1688,6 +1708,20 @@ async function initializeApp(optionData) {
             function switchToEpisode(ep) {
                 if (!ep) return;
 
+                // --- Reset Ad Tracking Flags for New Episode ---
+                preAdShown = false;
+                midAdShown = false;
+                postAdShown = false;
+                isAdPlaying = false; // Ensure no ad state carries over
+                // --- End Reset Ad Tracking Flags ---
+
+                // --- Clear any active timers related to ads for the previous episode ---
+                if (window.adCountdownInterval) {
+                    clearInterval(window.adCountdownInterval);
+                    window.adCountdownInterval = null;
+                }
+                // --- End Clear Timers ---
+
                 // --- Blob Cleanup for Previous Episode (Optional Cleanup) ---
                 // Clear any active timers/borders related to the *previous* next episode card
                 if (window.nextEpisodeCountdownTimer) {
@@ -1699,22 +1733,18 @@ async function initializeApp(optionData) {
                     window.nextEpisodeBorderAnimation = null;
                 }
                 // --- End Blob Cleanup (No more revoking needed) ---
-
                 // --- Update Current Movie Data ---
                 currentMovieData = ep;
                 saveEpisodeProgress(currentMovieData);
                 // --- End Update Current Movie Data ---
-
                 // --- Determine Playback Quality and URL (Now using Original URLs) ---
                 const savedUserQualityForSwitch = getUserQualityPreference();
                 //console.log("Saved user quality preference for episode switch:", savedUserQualityForSwitch);
-
                 // determinePlaybackQualityAndUrl now uses the original URLs in currentMovieData.video
                 // and sets the global videoType
                 const switchPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, savedUserQualityForSwitch);
                 let newUrl = ''; // This should now be an Original URL
                 activeQuality = ''; // Reset active quality tracker
-
                 if (switchPlaybackInfo) {
                     newUrl = switchPlaybackInfo.url; // This is now an Original URL from currentMovieData.video
                     activeQuality = switchPlaybackInfo.quality;
@@ -1726,7 +1756,6 @@ async function initializeApp(optionData) {
                     return;
                 }
                 // --- End Playback Quality Selection (No more Blob Conversion) ---
-
                 if (newUrl) {
                     // Use the original URL directly
                     art.switchUrl(newUrl, currentMovieData.title).then(() => {
@@ -1752,6 +1781,120 @@ async function initializeApp(optionData) {
                     console.error("No valid Original URL for this episode (should have been caught earlier)");
                 }
             }
+
+            // --- Ad Control Helpers ---
+            const hideMainPlayerControls = () => {
+                if (mainControlsContainer) mainControlsContainer.classList.add('hidden');
+                if (playbackControlsContainer) playbackControlsContainer.classList.add('hidden');
+                if (bottomLeftInfo) bottomLeftInfo.classList.add('hidden');
+                if (moreEpisodesContainer) moreEpisodesContainer.classList.add('hidden');
+            };
+
+            const showMainPlayerControls = () => {
+                if (mainControlsContainer) mainControlsContainer.classList.remove('hidden');
+                if (playbackControlsContainer) playbackControlsContainer.classList.remove('hidden');
+                if (bottomLeftInfo) bottomLeftInfo.classList.remove('hidden');
+            };
+            // --- End Ad Control Helpers ---
+
+            // --- New Ad Helper Functions ---
+            const exitFullscreenIfNeeded = () => {
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                if (isIOS && art.fullscreen) {
+                    // console.log("Exiting fullscreen for ad playback on iOS");
+                    art.fullscreen = false;
+                }
+            };
+
+            const showAdCountdownAndPlayAd = (adType, adUrl) => {
+                // console.log(`Showing countdown for ${adType}`);
+                exitFullscreenIfNeeded(); // Exit fullscreen before showing countdown/ad
+
+                if (art.duration < 600) {
+                    // Play the ad after countdown
+                    if (adPlugin) {
+                        // console.log(`Countdown finished, playing ${adType}`);
+                        isAdPlaying = true; // Set flag before playing
+                        hideMainPlayerControls(); // Hide controls before playing ad
+                        if (adType === 'preLoll') {
+                            // Use startAd for preLoll
+                            adPlugin.startAd();
+                        } else {
+                            // Use updateVideoLink for midLoll, postLoll
+                            const duration = currentMovieData.locked ? 86400 : 50; // Use 50s as total duration for countdown display, adjust playDuration if needed
+                            adPlugin.updateVideoLink(adUrl, duration, duration); // playDuration=48, totalDuration=50 (or 86400)
+                        }
+                        return
+                    }
+                }
+                if (!actionButtonsContainer) return;
+
+                let countdownValue = 10; // 10 seconds countdown
+                const wrapper = document.createElement('div');
+                wrapper.id = `ad-countdown-${adType}`;
+                wrapper.className = 'action-button-wrapper';
+                wrapper.style.width = '100%'; // Span full width
+
+                const button = document.createElement('button');
+                button.className = 'dynamic-action-button';
+                button.disabled = true; // Disable the button
+                button.style.opacity = '0.6'; // Visually indicate it's inactive
+                button.style.cursor = 'not-allowed';
+
+                const updateButtonText = () => {
+                    const minutes = Math.floor(countdownValue / 60);
+                    const seconds = countdownValue % 60;
+                    button.innerHTML = `${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                };
+
+                updateButtonText(); // Initial text
+                wrapper.appendChild(button);
+                actionButtonsContainer.innerHTML = ''; // Clear previous buttons
+                actionButtonsContainer.appendChild(wrapper);
+
+                window.adCountdownInterval = setInterval(() => {
+                    countdownValue--;
+                    updateButtonText();
+                    if (countdownValue <= 0) {
+                        clearInterval(window.adCountdownInterval);
+                        window.adCountdownInterval = null;
+                        // Remove countdown button
+                        if (wrapper.parentNode === actionButtonsContainer) {
+                            actionButtonsContainer.removeChild(wrapper);
+                        }
+
+                        // Play the ad after countdown
+                        if (adPlugin) {
+                            // console.log(`Countdown finished, playing ${adType}`);
+                            isAdPlaying = true; // Set flag before playing
+                            hideMainPlayerControls(); // Hide controls before playing ad
+                            if (adType === 'preLoll') {
+                                // Use startAd for preLoll
+                                adPlugin.startAd();
+                            } else {
+                                // Use updateVideoLink for midLoll, postLoll
+                                const duration = currentMovieData.locked ? 86400 : 50; // Use 50s as total duration for countdown display, adjust playDuration if needed
+                                adPlugin.updateVideoLink(adUrl, duration, duration); // playDuration=48, totalDuration=50 (or 86400)
+                            }
+                        }
+                    }
+                }, 1000);
+            };
+
+            const playBlockedLollAd = (adUrl) => {
+                // console.log("Playing blockedLoll ad immediately");
+                exitFullscreenIfNeeded(); // Exit fullscreen before playing ad
+
+                if (adPlugin) {
+                    isAdPlaying = true; // Set flag before playing
+                    hideMainPlayerControls(); // Hide controls before playing ad
+                    // Use updateVideoLink for blockedLoll, immediate play, no countdown
+                    const duration = 86400;
+                    adPlugin.updateVideoLink(adUrl, duration, duration); // playDuration=48, totalDuration=50 (or 86400)
+                }
+            };
+            // --- End New Ad Helper Functions ---
+
             // --- Initial UI Setup ---
             if (artBottom) artBottom.style.padding = '30px 10px 0px';
             if (progressBar) progressBar.style.height = '5px';
@@ -1773,6 +1916,54 @@ async function initializeApp(optionData) {
             if (qualityControlContainer) resizeObserverInstance.observe(qualityControlContainer);
             resizeHandler = updateActionButtonPosition;
             window.addEventListener('resize', resizeHandler);
+
+            // --- ArtPlayer Event Hooks ---
+            // --- Ad Plugin Event Listeners (Attached to `art`, not `adPlugin`) ---
+            art.on('preLoll', () => {
+                // This might be triggered by startAd(), ensure flag is set
+                // console.log("Ad Plugin: preLoll event received via art");
+                isAdPlaying = true;
+                hideMainPlayerControls();
+            });
+
+            art.on('adStarted', () => {
+                // console.log("Ad Plugin: adStarted event received via art");
+                isAdPlaying = true;
+                hideMainPlayerControls(); // Ensure controls are hidden when ad starts
+            });
+
+            art.on('artplayerPluginAds:close', () => {
+                console.log("Ad Ended");
+                isAdPlaying = false;
+                showMainPlayerControls(); // Show controls when ad is closed
+                // Clear any leftover countdown interval if ad was skipped/closed early
+                if (window.adCountdownInterval) {
+                    clearInterval(window.adCountdownInterval);
+                    window.adCountdownInterval = null;
+                }
+                // Clear action buttons after ad close
+                if (actionButtonsContainer) {
+                    actionButtonsContainer.innerHTML = '';
+                }
+            });
+
+            art.on('artplayerPluginAds:error', (error) => {
+                console.error("Ad Plugin Error (via art):", error);
+                isAdPlaying = false;
+                showMainPlayerControls(); // Show controls if ad errors
+                // Clear any leftover countdown interval
+                if (window.adCountdownInterval) {
+                    clearInterval(window.adCountdownInterval);
+                    window.adCountdownInterval = null;
+                }
+                // Clear action buttons after ad error
+                if (actionButtonsContainer) {
+                    actionButtonsContainer.innerHTML = '';
+                }
+                art.notice.show = "Ad playback error occurred.";
+            });
+            // --- End Ad Plugin Event Listeners ---
+
             // --- Event Listeners for Main Controls ---
             if (rewindButton) rewindButton.addEventListener('click', () => { art.seek = art.currentTime - 30; });
             if (forwardButton) forwardButton.addEventListener('click', () => { art.seek = art.currentTime + 30; });
@@ -1793,7 +1984,6 @@ async function initializeApp(optionData) {
                     button.addEventListener('click', () => {
                         if (button.classList.contains('disabled') || button.classList.contains('active')) return;
                         const chosenQuality = button.dataset.value; // Quality the user explicitly chose
-
                         // --- Use Original URL directly from currentMovieData ---
                         // determinePlaybackQualityAndUrl now uses Original URLs if they were set
                         // and sets the global videoType
@@ -1801,10 +1991,8 @@ async function initializeApp(optionData) {
                         if (switchPlaybackInfo) {
                             const newOriginalUrl = switchPlaybackInfo.url; // This should be the Original URL
                             const qualityForLogging = switchPlaybackInfo.quality;
-
                             // Show loading indicator if Artplayer has one (optional)
                             // if (art.loading) art.loading.show = true;
-
                             // Use the original URL directly
                             // Pass the determined videoType to switchQuality if Artplayer's switchQuality respects it,
                             // or rely on the global videoType being set.
@@ -1862,6 +2050,11 @@ async function initializeApp(optionData) {
             let lastSaveTime = 0;
             let movieRemoved = false;
             art.on('video:timeupdate', () => {
+                if (lockOverlayShown_ || isAdPlaying) {
+                    art.pause(); // Pause the video if lock overlay is shown
+                    art.fullscreen = false; // Exit fullscreen if lock overlay is shown
+                    return; // Exit early to prevent further processing    
+                }
                 if (videoPlayedOnce === false) {
                     videoPlayedOnce = true; // Set the flag to true after the first play
                     if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
@@ -1909,11 +2102,41 @@ async function initializeApp(optionData) {
                     updateNextEpisodeCard(true); // Show the next episode card with countdown
                     window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
                 }
+
+                // --- Ad Triggering Logic ---
+                if (currentMovieData.adstatus === true && !isAdPlaying) { // Only check if ads are enabled and no ad is currently playing
+                    const percentage = (art.currentTime / art.duration) * 100;
+
+                    // --- Ad Triggering Logic ---
+                    if (percentage >= 19 && percentage < 49 && !preAdShown) {
+                        console.log("Triggering preLoll ad check");
+                        showAdCountdownAndPlayAd('preLoll', allLolls[0]);
+                        preAdShown = true;
+                    } else if (percentage >= 55 && percentage <= 75 && !midAdShown) {
+                        console.log("Triggering midLoll ad check");
+                        showAdCountdownAndPlayAd('midLoll', allLolls[1]);
+                        midAdShown = true;
+                    } else if (percentage >= 81 && percentage <= 100 && !postAdShown) {
+                        // Note: postLoll is also handled by video:ended, this covers manual seeking near end
+                        console.log("Triggering postLoll ad check ");
+                        showAdCountdownAndPlayAd('postLoll', allLolls[2]); // Let video:ended handle primary postLoll
+                        postAdShown = true; // Don't set here if video:ended handles it primarily
+                    }
+                    // --- End Ad Triggering Logic ---
+                }
+                // --- End Ad Triggering Logic ---
             });
             // --- Add this block for handling video end ---
             // This will trigger if there's no endTime or if the user watches past the endTime
             art.on('video:ended', () => {
-                //console.log("Video ended.");
+                // console.log("Video ended.");
+                // --- Handle postLoll on video end ---
+                if (currentMovieData.adstatus === true && !postAdShown && !isAdPlaying) {
+                    // console.log("Video ended, triggering postLoll ad");
+                    showAdCountdownAndPlayAd('postLoll', allLolls[2]);
+                    postAdShown = true;
+                }
+                // --- End postLoll Handling ---
                 updateNextEpisodeCard(true); // Show the next episode card with countdown
                 window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
             });
