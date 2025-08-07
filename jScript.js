@@ -4,6 +4,8 @@ let resizeObserverInstance = null;
 let resizeHandler = null;
 let tempData = {};
 let languageCode = 'en'; // Default language code, can be overridden
+let currentAdRegion = null; // Track which ad region we're currently in
+let pendingAdType = null; // Track which ad type is pending during countdown
 /**
  * @function destroyApp
  * @description Destroys the ArtPlayer instance, removes dynamically added styles,
@@ -92,6 +94,17 @@ function handleKeyPress(event) {
             break;
     }
 }
+// Updated function to determine which ad region the current time falls into
+const getCurrentAdRegion = (percentage) => {
+    if (percentage >= 19 && percentage < 49) {
+        return 'preLoll';
+    } else if (percentage >= 55 && percentage <= 75) {
+        return 'midLoll';
+    } else if (percentage >= 81 && percentage <= 100) {
+        return 'postLoll';
+    }
+    return null;
+};
 function destroyApp() {
     //console.log("Destroying existing player instance if it exists...");
     // 1. Destroy the ArtPlayer instance if it exists
@@ -1709,7 +1722,11 @@ async function initializeApp(optionData) {
                 preAdShown = false;
                 midAdShown = false;
                 postAdShown = false;
-                isAdPlaying = false; // Ensure no ad state carries over
+                isAdPlaying = false;
+
+                // Reset new ad region tracking variables
+                currentAdRegion = null;
+                pendingAdType = null;
                 // --- End Reset Ad Tracking Flags ---
 
                 // --- Clear any active timers related to ads for the previous episode ---
@@ -1767,7 +1784,7 @@ async function initializeApp(optionData) {
                         else if (parseInt(currentMovieData.time.startTime, 10) > 0) showSkipIntroButton();
                         // Update the next episode card (now for the *new* current episode)
                         updateNextEpisodeCard(false); // Show standard card for the new episode
-                        
+
                     }).catch(err => {
                         // if (art.loading) art.loading.show = false; // Hide loading indicator
                         console.error("Failed to switch to new episode URL (Original):", err);
@@ -1804,39 +1821,46 @@ async function initializeApp(optionData) {
                 }
             };
 
+            // Updated showAdCountdownAndPlayAd function with seek detection
             const showAdCountdownAndPlayAd = (adType, adUrl) => {
-                // console.log(`Showing countdown for ${adType}`);
-                exitFullscreenIfNeeded(); // Exit fullscreen before showing countdown/ad
+                //console.log(`Showing countdown for ${adType}`);
+                exitFullscreenIfNeeded();
+
+                // Set the pending ad type and current region
+                pendingAdType = adType;
+                currentAdRegion = adType;
 
                 if (art.duration < 600) {
                     // Play the ad after countdown
                     if (adPlugin) {
-                        // console.log(`Countdown finished, playing ${adType}`);
-                        isAdPlaying = true; // Set flag before playing
-                        hideMainPlayerControls(); // Hide controls before playing ad
+                        //console.log(`Countdown finished, playing ${adType}`);
+                        isAdPlaying = true;
+                        hideMainPlayerControls();
                         if (adType === 'preLoll') {
-                            // Use startAd for preLoll
                             adPlugin.startAd();
                         } else {
-                            // Use updateVideoLink for midLoll, postLoll
-                            const duration = currentMovieData.locked ? 86400 : 50; // Use 50s as total duration for countdown display, adjust playDuration if needed
-                            adPlugin.updateVideoLink(adUrl, duration, duration); // playDuration=48, totalDuration=50 (or 86400)
+                            const duration = currentMovieData.locked ? 86400 : 50;
+                            adPlugin.updateVideoLink(adUrl, duration, duration);
                         }
-                        return
+                        // Clear pending states
+                        pendingAdType = null;
+                        currentAdRegion = null;
                     }
+                    return;
                 }
+
                 if (!actionButtonsContainer) return;
 
                 let countdownValue = 10; // 10 seconds countdown
                 const wrapper = document.createElement('div');
                 wrapper.id = `ad-countdown-${adType}`;
                 wrapper.className = 'action-button-wrapper';
-                wrapper.style.width = '100%'; // Span full width
+                wrapper.style.width = '100%';
 
                 const button = document.createElement('button');
                 button.className = 'dynamic-action-button';
-                button.disabled = true; // Disable the button
-                button.style.opacity = '0.6'; // Visually indicate it's inactive
+                button.disabled = true;
+                button.style.opacity = '0.6';
                 button.style.cursor = 'not-allowed';
 
                 const updateButtonText = () => {
@@ -1845,38 +1869,64 @@ async function initializeApp(optionData) {
                     button.innerHTML = `${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 };
 
-                updateButtonText(); // Initial text
+                updateButtonText();
                 wrapper.appendChild(button);
-                actionButtonsContainer.innerHTML = ''; // Clear previous buttons
+                actionButtonsContainer.innerHTML = '';
                 actionButtonsContainer.appendChild(wrapper);
 
                 window.adCountdownInterval = setInterval(() => {
                     countdownValue--;
                     updateButtonText();
+
                     if (countdownValue <= 0) {
                         clearInterval(window.adCountdownInterval);
                         window.adCountdownInterval = null;
+
                         // Remove countdown button
                         if (wrapper.parentNode === actionButtonsContainer) {
                             actionButtonsContainer.removeChild(wrapper);
                         }
 
                         // Play the ad after countdown
-                        if (adPlugin) {
-                            // console.log(`Countdown finished, playing ${adType}`);
-                            isAdPlaying = true; // Set flag before playing
-                            hideMainPlayerControls(); // Hide controls before playing ad
+                        if (adPlugin && pendingAdType === adType) { // Only play if this is still the pending ad
+                            //console.log(`Countdown finished, playing ${adType}`);
+                            isAdPlaying = true;
+                            hideMainPlayerControls();
                             if (adType === 'preLoll') {
-                                // Use startAd for preLoll
                                 adPlugin.startAd();
                             } else {
-                                // Use updateVideoLink for midLoll, postLoll
-                                const duration = currentMovieData.locked ? 86400 : 50; // Use 50s as total duration for countdown display, adjust playDuration if needed
-                                adPlugin.updateVideoLink(adUrl, duration, duration); // playDuration=48, totalDuration=50 (or 86400)
+                                const duration = currentMovieData.locked ? 86400 : 50;
+                                adPlugin.updateVideoLink(adUrl, duration, duration);
                             }
                         }
+
+                        // Clear pending states
+                        pendingAdType = null;
+                        currentAdRegion = null;
                     }
                 }, 1000);
+            };
+
+            // New function to cancel current countdown and start new one
+            const cancelCurrentCountdownAndStartNew = (newAdType, newAdUrl) => {
+                //console.log(`Canceling current countdown for ${pendingAdType}, starting new countdown for ${newAdType}`);
+
+                // Clear existing countdown
+                if (window.adCountdownInterval) {
+                    clearInterval(window.adCountdownInterval);
+                    window.adCountdownInterval = null;
+                }
+
+                // Clear existing countdown button
+                if (actionButtonsContainer) {
+                    const existingCountdown = actionButtonsContainer.querySelector(`[id^="ad-countdown-"]`);
+                    if (existingCountdown) {
+                        existingCountdown.remove();
+                    }
+                }
+
+                // Start new countdown
+                showAdCountdownAndPlayAd(newAdType, newAdUrl);
             };
 
             const playBlockedLollAd = (adUrl) => {
@@ -1931,14 +1981,20 @@ async function initializeApp(optionData) {
             });
 
             art.on('artplayerPluginAds:close', () => {
-                console.log("Ad Ended");
+                //console.log("Ad Ended");
                 isAdPlaying = false;
-                showMainPlayerControls(); // Show controls when ad is closed
-                // Clear any leftover countdown interval if ad was skipped/closed early
+                showMainPlayerControls();
+
+                // Reset pending ad states
+                pendingAdType = null;
+                currentAdRegion = null;
+
+                // Clear any leftover countdown interval
                 if (window.adCountdownInterval) {
                     clearInterval(window.adCountdownInterval);
                     window.adCountdownInterval = null;
                 }
+
                 // Clear action buttons after ad close
                 if (actionButtonsContainer) {
                     actionButtonsContainer.innerHTML = '';
@@ -1948,16 +2004,23 @@ async function initializeApp(optionData) {
             art.on('artplayerPluginAds:error', (error) => {
                 console.error("Ad Plugin Error (via art):", error);
                 isAdPlaying = false;
-                showMainPlayerControls(); // Show controls if ad errors
+                showMainPlayerControls();
+
+                // Reset pending ad states
+                pendingAdType = null;
+                currentAdRegion = null;
+
                 // Clear any leftover countdown interval
                 if (window.adCountdownInterval) {
                     clearInterval(window.adCountdownInterval);
                     window.adCountdownInterval = null;
                 }
+
                 // Clear action buttons after ad error
                 if (actionButtonsContainer) {
                     actionButtonsContainer.innerHTML = '';
                 }
+
                 art.notice.show = "Ad playback error occurred.";
             });
             // --- End Ad Plugin Event Listeners ---
@@ -2050,7 +2113,7 @@ async function initializeApp(optionData) {
             art.on('video:timeupdate', () => {
                 if (lockOverlayShown_ || isAdPlaying) {
                     art.pause(); // Pause the video if lock overlay is shown
-                    art.fullscreen = false; // Exit fullscreen if lock overlay is shown
+                    exitFullscreenIfNeeded(); // Exit fullscreen if needed
                     return; // Exit early to prevent further processing    
                 }
                 if (videoPlayedOnce === false) {
@@ -2102,25 +2165,67 @@ async function initializeApp(optionData) {
                 }
 
                 // --- Ad Triggering Logic ---
-                if (currentMovieData.adstatus === true && !isAdPlaying) { // Only check if ads are enabled and no ad is currently playing
+                if (currentMovieData.adstatus === true && !isAdPlaying) {
                     const percentage = (art.currentTime / art.duration) * 100;
+                    const newAdRegion = getCurrentAdRegion(percentage);
 
-                    // --- Ad Triggering Logic ---
-                    if (percentage >= 19 && percentage < 49 && !preAdShown) {
-                        console.log("Triggering preLoll ad check");
-                        showAdCountdownAndPlayAd('preLoll', allLolls[0]);
-                        preAdShown = true;
-                    } else if (percentage >= 55 && percentage <= 75 && !midAdShown) {
-                        console.log("Triggering midLoll ad check");
-                        showAdCountdownAndPlayAd('midLoll', allLolls[1]);
-                        midAdShown = true;
-                    } else if (percentage >= 81 && percentage <= 100 && !postAdShown) {
-                        // Note: postLoll is also handled by video:ended, this covers manual seeking near end
-                        console.log("Triggering postLoll ad check ");
-                        showAdCountdownAndPlayAd('postLoll', allLolls[2]); // Let video:ended handle primary postLoll
-                        postAdShown = true; // Don't set here if video:ended handles it primarily
+                    // Check if we've moved to a different ad region during countdown
+                    if (pendingAdType && currentAdRegion && newAdRegion !== currentAdRegion) {
+                        //console.log(`Detected seek from ${currentAdRegion} to ${newAdRegion} during countdown`);
+
+                        // Determine which ad to show in the new region
+                        let newAdType = null;
+                        let newAdUrl = null;
+                        let shouldTrigger = false;
+
+                        if (newAdRegion === 'preLoll' && !preAdShown) {
+                            newAdType = 'preLoll';
+                            newAdUrl = allLolls[0];
+                            shouldTrigger = true;
+                        } else if (newAdRegion === 'midLoll' && !midAdShown) {
+                            newAdType = 'midLoll';
+                            newAdUrl = allLolls[1];
+                            shouldTrigger = true;
+                        } else if (newAdRegion === 'postLoll' && !postAdShown) {
+                            newAdType = 'postLoll';
+                            newAdUrl = allLolls[2];
+                            shouldTrigger = true;
+                        }
+
+                        if (shouldTrigger) {
+                            cancelCurrentCountdownAndStartNew(newAdType, newAdUrl);
+                        } else {
+                            // Clear countdown if moved to a region where ad was already shown or outside ad regions
+                            if (window.adCountdownInterval) {
+                                clearInterval(window.adCountdownInterval);
+                                window.adCountdownInterval = null;
+                            }
+                            if (actionButtonsContainer) {
+                                const existingCountdown = actionButtonsContainer.querySelector(`[id^="ad-countdown-"]`);
+                                if (existingCountdown) {
+                                    existingCountdown.remove();
+                                }
+                            }
+                            pendingAdType = null;
+                            currentAdRegion = null;
+                        }
                     }
-                    // --- End Ad Triggering Logic ---
+                    // Original ad triggering logic (only if no countdown is in progress)
+                    else if (!pendingAdType) {
+                        if (percentage >= 19 && percentage < 49 && !preAdShown) {
+                            //console.log("Triggering preLoll ad check");
+                            showAdCountdownAndPlayAd('preLoll', allLolls[0]);
+                            preAdShown = true;
+                        } else if (percentage >= 55 && percentage <= 75 && !midAdShown) {
+                            //console.log("Triggering midLoll ad check");
+                            showAdCountdownAndPlayAd('midLoll', allLolls[1]);
+                            midAdShown = true;
+                        } else if (percentage >= 81 && percentage <= 100 && !postAdShown) {
+                            //console.log("Triggering postLoll ad check");
+                            showAdCountdownAndPlayAd('postLoll', allLolls[2]);
+                            postAdShown = true;
+                        }
+                    }
                 }
                 // --- End Ad Triggering Logic ---
             });
