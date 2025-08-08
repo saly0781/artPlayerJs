@@ -26,6 +26,91 @@ let eData = {
     endTime: "",
     totalTime: "",
 };
+
+
+/**
+ * @function cleanupCompletedMovies
+ * @description Removes completed movies/episodes from localStorage continue watching list
+ * based on completion criteria (>90% watched or watched past endTime for final episodes)
+ */
+function cleanupCompletedMovies() {
+    const CONTINUE_WATCHING_KEY = 'continuewatching';
+    
+    try {
+        const savedData = localStorage.getItem(CONTINUE_WATCHING_KEY);
+        if (!savedData) {
+            //console.log("No continue watching data found in localStorage");
+            return;
+        }
+        
+        let continueWatchingList = JSON.parse(savedData);
+        if (!Array.isArray(continueWatchingList)) {
+            //console.log("Invalid continue watching data format");
+            return;
+        }
+        
+        //console.log(`Found ${continueWatchingList.length} items in continue watching list`);
+        
+        // Filter out completed movies/episodes
+        const filteredList = continueWatchingList.filter(item => {
+            // Ensure required properties exist
+            if (!item.continueWatching || typeof item.continueWatching.inPercentage !== 'number') {
+                //console.warn("Item missing continueWatching data:", item.episodeId || item.movieId);
+                return true; // Keep items with incomplete data for safety
+            }
+            
+            const percentage = item.continueWatching.inPercentage;
+            const watchedMinutes = item.continueWatching.inMinutes || 0;
+            const endTime = item.time?.endTime ? parseInt(item.time.endTime, 10) : null;
+            const type = item.type;
+            const partName = item.partName;
+            
+            // Check completion criteria
+            const isOverNinetyPercent = percentage > 90;
+            const isWatchedPastEndTime = endTime && watchedMinutes > endTime;
+            
+            // For Movies (type 'M')
+            if (type === 'M') {
+                if (isOverNinetyPercent || isWatchedPastEndTime) {
+                    //console.log(`Removing completed movie: ${item.title} (${percentage}% watched)`);
+                    return false; // Remove this item
+                }
+            }
+            
+            // For Series/Episodes (type 'S')
+            if (type === 'S') {
+                // Check if it's a final episode/part
+                const isFinalPart = partName && partName.toLowerCase().includes('final');
+                
+                if (isFinalPart && (isOverNinetyPercent || isWatchedPastEndTime)) {
+                    //console.log(`Removing completed final episode: ${item.title} - ${partName} (${percentage}% watched)`);
+                    return false; // Remove this item
+                }
+                
+                // For non-final episodes, also remove if >90% to avoid clutter
+                // You can comment this out if you want to keep non-final episodes
+                if (isOverNinetyPercent || isWatchedPastEndTime) {
+                    //console.log(`Removing completed episode: ${item.title} - EP${item.episode || ''}${partName || ''} (${percentage}% watched)`);
+                    return false; // Remove this item
+                }
+            }
+            
+            return true; // Keep this item
+        });
+        
+        const removedCount = continueWatchingList.length - filteredList.length;
+        
+        if (removedCount > 0) {
+            //console.log(`Removed ${removedCount} completed items from continue watching list`);
+            localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(filteredList));
+        } else {
+            //console.log("No completed items found to remove");
+        }
+        
+    } catch (error) {
+        console.error("Error cleaning up completed movies from localStorage:", error);
+    }
+}
 // Function to handle keypress events for S and E keys
 async function saveMovieData(sData, eData) {
     // Save the movie data to the global savingData object
@@ -1052,6 +1137,8 @@ function _x(video, url, art) {
     }
 }
 async function initializeApp(optionData) {
+    // Add cleanup at the very beginning of initialization
+    cleanupCompletedMovies();
     window.movieId = optionData.movieId;
     window.language = optionData.language;
     languageCode = optionData.language == 'en' ? 'en' : 'rw';
