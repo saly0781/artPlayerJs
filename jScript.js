@@ -35,22 +35,22 @@ let eData = {
  */
 function cleanupCompletedMovies() {
     const CONTINUE_WATCHING_KEY = 'continuewatching';
-    
+
     try {
         const savedData = localStorage.getItem(CONTINUE_WATCHING_KEY);
         if (!savedData) {
             //console.log("No continue watching data found in localStorage");
             return;
         }
-        
+
         let continueWatchingList = JSON.parse(savedData);
         if (!Array.isArray(continueWatchingList)) {
             //console.log("Invalid continue watching data format");
             return;
         }
-        
+
         //console.log(`Found ${continueWatchingList.length} items in continue watching list`);
-        
+
         // Filter out completed movies/episodes
         const filteredList = continueWatchingList.filter(item => {
             // Ensure required properties exist
@@ -58,17 +58,17 @@ function cleanupCompletedMovies() {
                 //console.warn("Item missing continueWatching data:", item.episodeId || item.movieId);
                 return true; // Keep items with incomplete data for safety
             }
-            
+
             const percentage = item.continueWatching.inPercentage;
             const watchedMinutes = item.continueWatching.inMinutes || 0;
             const endTime = item.time?.endTime ? parseInt(item.time.endTime, 10) : null;
             const type = item.type;
             const partName = item.partName;
-            
+
             // Check completion criteria
             const isOverNinetyPercent = percentage > 90;
             const isWatchedPastEndTime = endTime && watchedMinutes > endTime;
-            
+
             // For Movies (type 'M')
             if (type === 'M') {
                 if (isOverNinetyPercent || isWatchedPastEndTime) {
@@ -76,17 +76,17 @@ function cleanupCompletedMovies() {
                     return false; // Remove this item
                 }
             }
-            
+
             // For Series/Episodes (type 'S')
             if (type === 'S') {
                 // Check if it's a final episode/part
                 const isFinalPart = partName && partName.toLowerCase().includes('final');
-                
+
                 if (isFinalPart && (isOverNinetyPercent || isWatchedPastEndTime)) {
                     //console.log(`Removing completed final episode: ${item.title} - ${partName} (${percentage}% watched)`);
                     return false; // Remove this item
                 }
-                
+
                 // For non-final episodes, also remove if >90% to avoid clutter
                 // You can comment this out if you want to keep non-final episodes
                 if (isOverNinetyPercent || isWatchedPastEndTime) {
@@ -94,19 +94,19 @@ function cleanupCompletedMovies() {
                     return false; // Remove this item
                 }
             }
-            
+
             return true; // Keep this item
         });
-        
+
         const removedCount = continueWatchingList.length - filteredList.length;
-        
+
         if (removedCount > 0) {
             //console.log(`Removed ${removedCount} completed items from continue watching list`);
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(filteredList));
         } else {
             //console.log("No completed items found to remove");
         }
-        
+
     } catch (error) {
         console.error("Error cleaning up completed movies from localStorage:", error);
     }
@@ -1141,6 +1141,7 @@ async function initializeApp(optionData) {
     cleanupCompletedMovies();
     window.movieId = optionData.movieId;
     window.language = optionData.language;
+    window.device = optionData.device;
     languageCode = optionData.language == 'en' ? 'en' : 'rw';
     let lockOverlayShown_ = false;
     // --- Ad Tracking Flags (inside initializeApp, outside art.on('ready')) ---
@@ -1376,25 +1377,42 @@ async function initializeApp(optionData) {
                 }
             };
             backButton.onclick = () => {
-                const event = new CustomEvent('playerAction', {
-                    detail: {
+                if (window.device == "web") {
+                    const event = new CustomEvent('playerAction', {
+                        detail: {
+                            action: 'backButton',
+                            data: {}
+                        }
+                    });
+                    document.dispatchEvent(event)
+                } else {
+                    window.flutter_inappwebview.callHandler('playerAction', {
                         action: 'backButton',
                         data: {}
-                    }
-                });
-                document.dispatchEvent(event); // dispatch globally
+                    });
+                }
             };
             subscribeButton.onclick = () => {
-                window.location.assign(`/kwishyura?vd=${optionData.movieId}`);
+                window.device == "web" ? window.location.assign(`/kwishyura?vd=${optionData.movieId}`) : window.flutter_inappwebview.callHandler('playerAction', {
+                    action: 'subscribeButton',
+                    data: optionData.movieId
+                });
             };
             helpButton.onclick = () => {
-                const event = new CustomEvent('playerAction', {
-                    detail: {
+                if (window.device == "web") {
+                    const event = new CustomEvent('playerAction', {
+                        detail: {
+                            action: 'helpButton',
+                            data: {}
+                        }
+                    });
+                    document.dispatchEvent(event);
+                } else {
+                    window.flutter_inappwebview.callHandler('playerAction', {
                         action: 'helpButton',
                         data: {}
-                    }
-                });
-                document.dispatchEvent(event); // dispatch globally
+                    });
+                }
             };
             // --- UI Update Functions ---
             const updateUIForNewEpisode = () => {
@@ -1600,7 +1618,10 @@ async function initializeApp(optionData) {
             };
             const showLockOverlay = () => {
                 art.pause();
-                art.fullscreen = false;
+                window.device == "web" ? art.fullscreen = false : window.flutter_inappwebview.callHandler('playerAction', {
+                    action: 'fullscreen',
+                    data: "exit"
+                });
                 // --- Handle blockedLoll on lock overlay show ---
                 if (currentMovieData.adstatus === true) {
                     // console.log("Showing lock overlay, triggering blockedLoll ad");
@@ -1902,9 +1923,12 @@ async function initializeApp(optionData) {
             // --- New Ad Helper Functions ---
             const exitFullscreenIfNeeded = () => {
                 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                if (isIOS && art.fullscreen) {
+                if (isIOS && art.fullscreen && window.device == "web") {
                     // console.log("Exiting fullscreen for ad playback on iOS");
-                    art.fullscreen = false;
+                    window.device == "web" ? art.fullscreen = false : window.flutter_inappwebview.callHandler('playerAction', {
+                        action: 'fullscreen',
+                        data: "exit"
+                    });
                 }
             };
 
@@ -2116,7 +2140,10 @@ async function initializeApp(optionData) {
             if (rewindButton) rewindButton.addEventListener('click', () => { art.seek = art.currentTime - 30; });
             if (forwardButton) forwardButton.addEventListener('click', () => { art.seek = art.currentTime + 30; });
             if (playPauseButton) playPauseButton.addEventListener('click', () => art.toggle());
-            if (fullscreenButton) fullscreenButton.addEventListener('click', () => art.fullscreen = !art.fullscreen);
+            if (fullscreenButton) fullscreenButton.addEventListener('click', () => window.device == "web" ? art.fullscreen = !art.fullscreen : window.flutter_inappwebview.callHandler('playerAction', {
+                    action: 'fullscreen',
+                    data: "auto"
+                }));
             if (volumeButton) {
                 const volumeIconPathEl = volumeButton.querySelector('svg path');
                 const volumeOnIconPath = "M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
