@@ -435,7 +435,7 @@ function injectComponentStyles() {
                             flex-direction: column;
                             align-items: center;
                             gap: 10px;
-                            padding: 20px 10px 10px;
+                            padding: 20px 50px 10px;
                             box-sizing: border-box;
                             font-family: 'Inter', sans-serif;
                             background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
@@ -684,8 +684,8 @@ function injectDynamicButtonStyles() {
                         }
                         #bottom-left-info {
                             position: absolute;
-                            bottom: 90px;
-                            left: 20px;
+                            bottom: 100px;
+                            left: 50px;
                             z-index: 25;
                             pointer-events: none;
                             width: 350px;
@@ -824,8 +824,8 @@ function injectDynamicButtonStyles() {
                         #more-episodes-container {
                             position: absolute;
                             right: 0;
-                            padding: 10px;
-                            bottom: 80px;
+                            padding: 50px;
+                            bottom: 55px;
                         }
                         #more-episodes-card {
                             cursor: pointer;
@@ -2191,7 +2191,7 @@ async function initializeApp(optionData) {
             // --- End New Ad Helper Functions ---
 
             // --- Initial UI Setup ---
-            if (artBottom) artBottom.style.padding = '30px 10px 0px';
+            if (artBottom) artBottom.style.padding = '30px 50px 30px';
             if (progressBar) progressBar.style.height = '5px';
             if (progressBarInner) progressBarInner.style.backgroundColor = '#393939';
             if (centerControls) centerControls.style.paddingBottom = '20px';
@@ -2504,3 +2504,16 @@ async function initializeApp(optionData) {
         console.error('Failed to initialize player:', error);
     }
 }
+// Example of how to start the application
+//initializeApp();
+// destroyApp();
+// Example of how to start the application
+
+initializeApp({
+    "movieId": "07de7180-1abe-43dc-b3fa-afabcda34469",
+    "userId": "",
+    "deviceType": "IOS",
+    "language": "rn",
+    "device": "web",
+});
+// destroyApp();
