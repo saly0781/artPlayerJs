@@ -984,18 +984,20 @@ function injectEpisodesOverlayStyles() {
                             bottom: 0;
                             left: 0;
                             width: 100%;
+                            opacity: 0;
                             height: 250px;
                             background: linear-gradient(to top, rgba(0,0,0,0.9) 80%, transparent);
                             z-index: 30;
                             display: flex;
                             flex-direction: column;
                             font-family: 'Inter', sans-serif;
-                            transform: translateY(100%);
-                            transition: transform 0.3s ease-out;
+                            transition: opacity 0.3s ease-in-out;
                             overflow: hidden;
+                            pointer-events: none;
                         }
                         #episodesOverlay.visible {
-                            transform: translateY(0);
+                            opacity: 1;
+                            pointer-events: auto;
                         }
                         #episodesOverlay.no-transition {
                             transition: none;
@@ -1597,306 +1599,9 @@ async function initializeApp(optionData) {
             // --- Touch Swipe Logic for Episodes Overlay ---
 
             // 1. Get the relevant DOM elements
-            const playerContainer = document.querySelector('.artplayer-app'); // Adjust selector if needed
             const episodesLayer = document.querySelector('.art-layer-episodes'); // Assuming this holds the overlay
             const episodesOverlay = episodesLayer ? episodesLayer.querySelector('#episodesOverlay') : null;
 
-            // Check if elements exist before adding listeners
-            if (playerContainer && episodesOverlay) {
-                let isDragging = false;
-                let startY = 0;           // Touch start Y coordinate
-                let currentY = 0;         // Current touch Y coordinate during move
-                let startTranslateY = 0;  // Overlay's translateY at the start of drag
-                let dragDirection = null; // 'up' or 'down' or null
-                let startTimeStamp = 0;   // Timestamp when drag started (for velocity)
-
-                // --- Ensure CSS Transition is Suitable ---
-                // Make sure #episodesOverlay has a transition defined in your CSS for snapping
-                // e.g., #episodesOverlay { transition: transform 0.3s ease-out; }
-                // Optional: Class to disable transition during drag for immediate feedback
-                // Add this CSS rule if not present:
-                // #episodesOverlay.no-transition { transition: none; }
-
-
-                const overlayHeight = episodesOverlay.offsetHeight || 300; // Fallback height if offsetHeight is 0 initially
-                const snapThreshold = overlayHeight * 0.3; // Percentage of height to trigger snap
-
-                // --- Helper Functions ---
-
-                // Check if the overlay is currently considered "open"
-                function isOverlayOpen() {
-                    // Check if it has the 'visible' class (your logic for showing)
-                    // AND if its translateY is near 0 (meaning it's slid up into view)
-                    const transform = window.getComputedStyle(episodesOverlay).transform;
-                    let translateY = 0;
-                    if (transform && transform !== 'none') {
-                        try {
-                            const matrix = new DOMMatrixReadOnly(transform);
-                            translateY = matrix.m42; // m42 is the translateY value
-                        } catch (e) {
-                            // Fallback if DOMMatrixReadOnly is not supported or parsing fails
-                            const match = transform.match(/matrix.*\((.+)\)/);
-                            if (match) {
-                                const values = match[1].split(',').map(parseFloat);
-                                translateY = values[5] || 0; // 6th value in matrix() or 3rd in matrix3d()
-                            }
-                        }
-                    }
-                    // Consider open if visible class is present AND it's near the top (translateY ~ 0)
-                    return episodesOverlay.classList.contains('visible') && Math.abs(translateY) < 10;
-                }
-
-                // Apply translateY transform to the overlay
-                function setOverlayTranslateY(translateY) {
-                    episodesOverlay.style.transform = `translateY(${translateY}px)`;
-                }
-
-                // Get current translateY value from the element's style or computed style
-                function getCurrentTranslateY() {
-                    const transform = window.getComputedStyle(episodesOverlay).transform;
-                    if (transform === 'none') return 0;
-                    try {
-                        const matrix = new DOMMatrixReadOnly(transform);
-                        return matrix.m42; // m42 is the translateY value
-                    } catch (e) {
-                        // Fallback
-                        const match = transform.match(/matrix.*\((.+)\)/);
-                        if (match) {
-                            const values = match[1].split(',').map(parseFloat);
-                            return values[5] || 0;
-                        }
-                        return 0;
-                    }
-                }
-
-                // Snap the overlay to fully open or closed position
-                function snapOverlay(isOpen) {
-                    episodesOverlay.classList.remove('no-transition'); // Always ensure transition is enabled for snap
-                    if (isOpen) {
-                        // Snap to fully open
-                        episodesOverlay.classList.add('visible'); // Ensure visible class is added
-                        setOverlayTranslateY(0);
-                        // Ensure the parent layer is visible if it was hidden
-                        if (episodesLayer.style.display === 'none') {
-                            episodesLayer.style.display = 'flex'; // Or 'block', depending on your layout
-                        }
-                        // Optional: Scroll active card into view after a short delay
-                        setTimeout(() => {
-                            const activeCard = episodesOverlay.querySelector('#episodesList .episode-card.active');
-                            if (activeCard) {
-                                // Use a faster scroll behavior or adjust block/inline as needed
-                                activeCard.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'nearest' });
-                            }
-                        }, 10);
-
-                    } else {
-                        // Snap to fully closed
-                        episodesOverlay.classList.remove('visible');
-                        setOverlayTranslateY(overlayHeight); // Move it down by its own height
-                        // Delay hiding the layer to let the transition finish
-                        setTimeout(() => {
-                            // Double-check it's still not visible before hiding the layer
-                            if (!episodesOverlay.classList.contains('visible')) {
-                                episodesLayer.style.display = 'none';
-                            }
-                        }, 300); // Match CSS transition duration (adjust if different)
-                    }
-                    // Reset drag state
-                    isDragging = false;
-                    dragDirection = null;
-                    startTimeStamp = 0; // Reset timestamp
-                }
-
-
-                // --- Touch Event Handlers ---
-
-                playerContainer.addEventListener('touchstart', (e) => {
-                    // Only initiate drag if:
-                    // 1. The overlay is already open, OR
-                    // 2. The touch starts near the bottom area (e.g., lower 30% of the player)
-                    const isOverlayCurrentlyOpen = isOverlayOpen();
-                    const touchY = e.touches[0].clientY;
-                    const containerHeight = playerContainer.clientHeight;
-                    const isNearBottom = touchY > containerHeight * 0.7; // Example threshold
-
-                    if (isOverlayCurrentlyOpen || isNearBottom) {
-                        isDragging = true;
-                        startY = e.touches[0].pageY;
-                        currentY = startY;
-                        startTranslateY = getCurrentTranslateY();
-                        dragDirection = null; // Reset direction
-                        startTimeStamp = e.timeStamp; // Store start time for velocity
-
-                        // Disable transition for immediate feedback during drag
-                        episodesOverlay.classList.add('no-transition');
-                        // Make sure the layer is visible if starting drag to open
-                        if (!isOverlayCurrentlyOpen) {
-                            episodesLayer.style.display = 'flex'; // Ensure layer is displayed
-                            episodesOverlay.classList.add('visible'); // Add class for visibility
-                            setupEpisodesOverlay();
-                            // Position it just below the screen as the starting point for drag-up
-                            setOverlayTranslateY(overlayHeight);
-                        } else {
-                            // If starting drag to close, ensure it starts from its current (likely open) position
-                            setOverlayTranslateY(startTranslateY);
-                        }
-                        // Prevent default scrolling might be needed, but be cautious
-                        // e.preventDefault();
-                    }
-                }, { passive: false }); // Not passive because we might call preventDefault
-
-                playerContainer.addEventListener('touchmove', (e) => {
-                    if (!isDragging) return;
-
-                    currentY = e.touches[0].pageY;
-                    const deltaY = currentY - startY;
-
-                    // Determine drag direction after initial movement (small threshold)
-                    if (!dragDirection && Math.abs(deltaY) > 5) {
-                        dragDirection = deltaY > 0 ? 'down' : 'up';
-                    }
-
-                    // Calculate new translateY based on drag
-                    let newTranslateY;
-                    const isCurrentlyOpen = isOverlayOpen(); // Check state at drag start
-
-                    if (isCurrentlyOpen) {
-                        // Dragging an OPEN overlay to CLOSE it (pulling down)
-                        // Start from 0 (fully open) and move down based on finger movement
-                        newTranslateY = Math.max(0, deltaY); // Don't drag above top (translateY 0)
-                        // Optional: Add resistance/bounce if pulled significantly down
-                        if (deltaY > overlayHeight * 0.2) { // Example: 20% resistance after a point
-                            newTranslateY = overlayHeight * 0.2 + (deltaY - overlayHeight * 0.2) * 0.3;
-                        }
-                    } else {
-                        // Dragging a CLOSED overlay to OPEN it (pulling up)
-                        // Start from fully hidden (overlayHeight) and move up based on finger movement
-                        // We initially set translateY to overlayHeight in touchstart
-                        newTranslateY = Math.max(0, overlayHeight + deltaY); // Don't drag above top
-                        // Optional: Add resistance/bounce if pulled significantly up beyond top
-                        if (newTranslateY < - overlayHeight * 0.2) {
-                            newTranslateY = - overlayHeight * 0.2 + (newTranslateY + overlayHeight * 0.2) * 0.3;
-                        }
-                    }
-
-                    // Apply the calculated translation for direct manipulation feel
-                    setOverlayTranslateY(newTranslateY);
-
-                    // Optional: Prevent scrolling the page if dragging vertically
-                    // Check if vertical movement is dominant compared to horizontal
-                    const deltaX = e.touches[0].pageX - (e.touches[0].pageX || 0); // Get initial X if needed, or use simpler check
-                    // Simpler check: prevent default if we are dragging vertically significantly
-                    if (Math.abs(deltaY) > Math.abs(e.touches[0].pageX - (e.changedTouches?.[0]?.pageX || e.touches[0]?.pageX || 0)) && Math.abs(deltaY) > 10) {
-                        e.preventDefault(); // Prevent scrolling if vertical drag is dominant
-                    }
-                }, { passive: false });
-
-                playerContainer.addEventListener('touchend', (e) => {
-                    if (!isDragging) return;
-
-                    const endY = e.changedTouches[0].pageY;
-                    const deltaY = endY - startY;
-                    const endTimeStamp = e.timeStamp;
-
-                    // --- Calculate velocity using stored startTimeStamp ---
-                    const deltaTime = endTimeStamp - startTimeStamp;
-                    // --- Add a small minimum delta time to prevent division by zero or NaN ---
-                    const velocityY = deltaTime > 10 ? deltaY / deltaTime : 0; // Velocity in pixels per millisecond
-                    // console.log("Velocity Y (px/ms):", velocityY); // For debugging sensitivity
-
-                    const currentTranslateY = getCurrentTranslateY();
-                    const isCurrentlyOpen = isOverlayOpen();
-
-                    // Re-enable CSS transition for the snap animation
-                    episodesOverlay.classList.remove('no-transition');
-
-                    let shouldOpen = false;
-
-                    // Decide whether to snap open or close based on position and velocity
-                    if (isCurrentlyOpen) {
-                        // Was open, dragging down to close
-                        if (currentTranslateY > snapThreshold || (velocityY > 0.2 && currentTranslateY > 5)) { // Adjusted velocity threshold (positive for swipe down)
-                            shouldOpen = false; // Snap closed
-                        } else {
-                            shouldOpen = true; // Snap back open
-                        }
-                    } else {
-                        // Was closed (or assumed closed), dragging up to open
-                        // Calculate how much is left to open (currentTranslateY should be > 0 and < overlayHeight)
-                        const distanceDraggedUp = overlayHeight - currentTranslateY; // How much we've pulled it up
-                        if (distanceDraggedUp > snapThreshold || (velocityY < -0.2 && distanceDraggedUp > 5)) { // Adjusted velocity threshold (negative for swipe up)
-                            shouldOpen = true; // Snap open
-                        } else {
-                            shouldOpen = false; // Snap closed
-                        }
-                    }
-
-                    snapOverlay(shouldOpen);
-
-                    // Reset drag state (already done in snapOverlay, but good for clarity)
-                    // isDragging = false; // Done in snapOverlay
-                    // dragDirection = null; // Done in snapOverlay
-                    // startTimeStamp = 0; // Done in snapOverlay
-                });
-
-                // --- Ensure Existing Click Logic Still Works (Optional Enhancement) ---
-                // These should integrate with your existing setupEpisodesOverlay and hideOverlay functions.
-
-                // Keep the click handler on #more-episodes-card for direct open (your existing logic)
-                // Make sure setupEpisodesOverlay shows the overlay with a transition
-                const moreEpisodesContainer = art?.layers?.bottomInfo?.querySelector('#more-episodes-container');
-                const moreEpisodesCard = moreEpisodesContainer?.querySelector('#more-episodes-card');
-                if (moreEpisodesCard) {
-                    // Ensure only one listener to prevent multiple triggers
-                    moreEpisodesCard.removeEventListener('click', handleMoreEpisodesClick);
-                    moreEpisodesCard.addEventListener('click', handleMoreEpisodesClick);
-                }
-                function handleMoreEpisodesClick() {
-                    // Use your existing setupEpisodesOverlay function or mimic its behavior
-                    // Ensure it makes episodesLayer visible and episodesOverlay visible/class-added
-                    // and sets translateY to 0 with transition.
-                    if (episodesLayer && episodesOverlay) {
-                        episodesLayer.style.display = 'flex';
-                        episodesOverlay.classList.add('visible');
-                        episodesOverlay.classList.remove('no-transition'); // Ensure transition
-                        setOverlayTranslateY(0); // Slide it into view
-                        // Scroll active card into view if needed (similar to snapOverlay open)
-                        setTimeout(() => {
-                            const activeCard = episodesOverlay.querySelector('#episodesList .episode-card.active');
-                            if (activeCard) {
-                                activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-                            }
-                        }, 300); // Match transition time or adjust
-                    }
-                }
-
-                // Ensure the close button still works (your existing logic)
-                // Make sure hideOverlay hides the overlay with a transition
-                const closeEpisodesOverlayBtn = episodesOverlay?.querySelector('#closeEpisodesOverlay');
-                if (closeEpisodesOverlayBtn) {
-                    // Ensure only one listener
-                    closeEpisodesOverlayBtn.removeEventListener('click', handleCloseEpisodesClick);
-                    closeEpisodesOverlayBtn.addEventListener('click', handleCloseEpisodesClick);
-                }
-                function handleCloseEpisodesClick() {
-                    // Use your existing hideOverlay function or mimic its behavior
-                    // Ensure it sets translateY to overlayHeight with transition and eventually hides episodesLayer.
-                    if (episodesOverlay) {
-                        episodesOverlay.classList.remove('visible');
-                        episodesOverlay.classList.remove('no-transition'); // Ensure transition
-                        setOverlayTranslateY(episodesOverlay.offsetHeight || 300); // Slide it out
-                        // Delay hiding the layer to let the transition finish (match CSS duration)
-                        setTimeout(() => {
-                            if (episodesLayer && !episodesOverlay.classList.contains('visible')) {
-                                episodesLayer.style.display = 'none';
-                            }
-                        }, 300);
-                    }
-                }
-
-            } else {
-                console.warn("Player container or episodes overlay not found for drag gestures.");
-            }
             // Add event listener to the document
             const adPlugin = art.plugins.artplayerPluginAds;
             document.addEventListener('keydown', handleKeyPress);
@@ -2017,7 +1722,7 @@ async function initializeApp(optionData) {
                 actionButtonsContainer.appendChild(wrapper);
             };
             // --- Episodes Overlay Setup ---
-            const setupEpisodesOverlay = () => {
+            const setupEpisodesOverlay = (ed) => {
                 const artBottom = document.querySelector('.art-bottom');
                 const closeEpisodesBtn = episodesLayer.querySelector('#closeEpisodesOverlay');
                 const episodesList = episodesLayer.querySelector('#episodesList');
@@ -2051,85 +1756,32 @@ async function initializeApp(optionData) {
                         seasonCardList.appendChild(card);
                     });
                 };
-                hideOverlay = () => {
-                    episodesOverlay.classList.remove('visible');
-                    //episodesOverlay.style.display = 'none';
-                    episodesOverlay.addEventListener('transitionend', () => {
-                        episodesLayer.style.display = 'none';
-                        episodesOverlay.classList.remove('seasons-active');
-                        if (artBottom) artBottom.style.display = 'flex';
-                    }, { once: true });
+                hideOverlay = (ed) => {
+                    ed.preventDefault();
+                    ed.stopPropagation();
+
+                    if (episodesOverlay) {
+                        // --- Use Opacity for Fade Out ---
+                        // Ensure transition is enabled (check CSS)
+                        if (artBottom) artBottom.style.display = 'flex'; // Show art bottom if hidden
+                        episodesOverlay.classList.remove('no-transition');
+                        episodesOverlay.classList.remove('visible'); // Remove class if used for state
+                        // Apply final state for fade out
+                        episodesOverlay.style.opacity = '0';
+                        episodesOverlay.style.pointerEvents = 'none'; // Disable interaction during/after fade out
+
+                        // Delay hiding the layer to let the transition finish (match CSS duration)
+                        setTimeout(() => {
+                            // Check state before hiding (good practice, though opacity handles visibility)
+                            if (episodesOverlay && episodesLayer && parseFloat(window.getComputedStyle(episodesOverlay).opacity) <= 0.1) {
+                                episodesOverlay.style.display = 'none'; // Hide overlay element
+                                episodesLayer.style.display = 'none';  // Hide parent layer
+                                episodesOverlay.classList.remove('seasons-active'); // Reset potential state
+                                if (artBottom) artBottom.style.display = 'flex'; // Show art bottom if hidden
+                            }
+                        }, 300); // Match CSS transition duration (adjust if different)
+                    }
                 };
-                /**
-                * Animates the episodes overlay in or out.
-                * @param {boolean} isOpen - True to animate in (swipe up), false to animate out (swipe down).
-                * @param {Function} [onComplete] - Optional callback after animation completes.
-                */
-                function animateEpisodesOverlay(isOpen, onComplete) {
-                    if (!episodesOverlay) {
-                        console.warn("Episodes overlay element not found for animation.");
-                        if (onComplete) onComplete();
-                        return;
-                    }
-
-                    // Ensure the parent layer is ready for the animation
-                    if (isOpen && episodesLayer) {
-                        episodesLayer.style.display = 'flex';
-                    }
-
-                    // Add class to indicate animation is in progress (optional, for styling)
-                    episodesOverlay.classList.add('animating');
-
-                    // --- Set up initial state ---
-                    episodesOverlay.classList.add('no-transition'); // Disable transition for setup
-                    const overlayHeight = episodesOverlay.offsetHeight || 300; // Fallback
-                    episodesOverlay.style.transform = `translateY(${isOpen ? overlayHeight : 0}px)`; // Start hidden (below) or shown (at top)
-
-                    // --- Force reflow ---
-                    // eslint-disable-next-line no-unused-vars
-                    const _ = episodesOverlay.offsetHeight; // Trigger reflow
-
-                    // --- Enable transition and set final state ---
-                    episodesOverlay.classList.remove('no-transition'); // Re-enable transition
-                    requestAnimationFrame(() => { // Ensure transition is enabled before setting final state
-                        episodesOverlay.style.transform = `translateY(${isOpen ? 0 : overlayHeight}px)`; // End at top or hidden (below)
-
-                        // --- Handle completion ---
-                        const handleTransitionEnd = () => {
-                            episodesOverlay.classList.remove('animating');
-                            episodesOverlay.removeEventListener('transitionend', handleTransitionEnd);
-
-                            if (isOpen) {
-                                episodesOverlay.classList.add('visible');
-                                // Scroll active card into view if needed
-                                setTimeout(() => { // Use timeout matching transition or listen to transitionend on specific prop
-                                    const activeCard = episodesOverlay.querySelector('#episodesList .episode-card.active');
-                                    if (activeCard) {
-                                        activeCard.scrollIntoView({ behavior: 'instant', block: 'nearest', inline: 'nearest' });
-                                    }
-                                }, 10);
-                            } else {
-                                episodesOverlay.classList.remove('visible');
-                                // Hide parent layer after close animation
-                                if (episodesLayer) {
-                                    episodesLayer.style.display = 'none';
-                                }
-                            }
-
-                            if (onComplete) onComplete();
-                        };
-
-                        // Listen for the end of the transition on the transform property
-                        episodesOverlay.addEventListener('transitionend', (event) => {
-                            if (event.propertyName === 'transform') {
-                                handleTransitionEnd();
-                            }
-                        }, { once: true });
-
-                        // Fallback in case transitionend doesn't fire (e.g., transition duration 0)
-                        setTimeout(handleTransitionEnd, 500); // Adjust timeout if your CSS transition is much longer
-                    });
-                }
                 const populateEpisodes = (seasonIndex) => {
                     if (!seriesData || !episodesList) return;
                     const season = seriesData.seasons[seasonIndex];
@@ -2160,7 +1812,7 @@ async function initializeApp(optionData) {
                                 card.innerHTML += `<div class="lock-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg></div>`;
                             }
                             card.innerHTML += `<div class="episode-info"><div class="season-text">${season.seasonName}</div><div class="episode-number">${ep.episode}${ep.partName || ''}</div><div class="title-text">${ep.title}</div></div><div class="audio-wave-container"><div class="audio-wave-bar"></div><div class="audio-wave-bar"></div><div class="audio-wave-bar"></div></div>`;
-                            card.addEventListener('click', () => {
+                            card.addEventListener('click', (e) => {
                                 if (card.classList.contains('locked')) {
                                     showLockOverlay();
                                     return;
@@ -2171,7 +1823,7 @@ async function initializeApp(optionData) {
                                 closeEpisodesBtn.dataset.listenerAttached = 'true';
                                 // Use the new switch function
                                 switchToEpisode(ep);
-                                hideOverlay();
+                                hideOverlay(e);
                             });
                             episodesList.appendChild(card);
                         }
@@ -2184,7 +1836,7 @@ async function initializeApp(optionData) {
                         // console.log("Close Episodes Button Clicked - Animating Out");
 
                         // Animate the overlay OUT (swipe down)
-                        animateEpisodesOverlay(false); // false for close/swipe-down
+                        hideOverlay(e); // Use the hideOverlay function to handle the animation
                     };
                     closeEpisodesBtn.removeEventListener('click', handleCloseClickEpisodes);
                     closeEpisodesBtn.addEventListener('click', handleCloseClickEpisodes);
@@ -2197,7 +1849,7 @@ async function initializeApp(optionData) {
                         // console.log("Close Seasons Button Clicked - Animating Out");
 
                         // Animate the overlay OUT (swipe down)
-                        animateEpisodesOverlay(false); // false for close/swipe-down
+                        hideOverlay(e); // Use the hideOverlay function to handle the animation
                     };
                     closeSeasonsBtn.removeEventListener('click', handleCloseClickSeasons);
                     closeSeasonsBtn.addEventListener('click', handleCloseClickSeasons);
@@ -2224,24 +1876,44 @@ async function initializeApp(optionData) {
                     scrollRightBtn.addEventListener('click', () => { if (episodesList) episodesList.scrollBy({ left: 300, behavior: 'smooth' }); });
                     scrollRightBtn.dataset.listenerAttached = 'true';
                 }
-                if (episodesOverlay.classList.contains('visible')) {
-                    // If it's already marked as visible, ensure it's positioned correctly (at the top)
-                    // This is important if setupEpisodesOverlay is called by the swipe logic after making it visible.
-                    episodesOverlay.style.transform = 'translateY(0)';
-                    if (episodesLayer) episodesLayer.style.display = 'flex';
-                }
+
                 episodesOverlay.classList.remove('seasons-active');
                 populateEpisodes(selectedSeasonIndex);
                 if (artBottom) artBottom.style.display = 'none';
-                episodesLayer.style.display = 'flex';
-                setTimeout(() => {
-                    episodesOverlay.classList.add('visible');
-                    //episodesOverlay.style.display = 'flex';
-                    const activeCard = episodesList.querySelector('.episode-card.active');
-                    if (activeCard) {
-                        activeCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                function handleMoreEpisodesClick(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    if (episodesLayer && episodesOverlay) {
+                        // Ensure the layer and overlay are visible (flex display)
+                        episodesLayer.style.display = 'flex';
+                        episodesOverlay.style.display = 'flex'; // Or 'block', ensure it's not 'none'
+                        episodesOverlay.classList.add('visible'); // Add class if needed for state
+
+                        // --- Use Opacity for Fade In ---
+                        // Ensure transition is enabled (check CSS)
+                        episodesOverlay.classList.remove('no-transition');
+                        // Set initial state for fade in (if not already set by CSS)
+                        episodesOverlay.style.opacity = '0';
+                        episodesOverlay.style.pointerEvents = 'auto'; // Make it interactive
+
+                        // Trigger reflow to ensure initial state is applied before transition
+                        // eslint-disable-next-line no-unused-vars
+                        const _ = episodesOverlay.offsetHeight;
+
+                        // Apply final state for fade in
+                        episodesOverlay.style.opacity = '1';
+
+                        // Optional: Scroll active card into view after fade-in (adjust delay if needed)
+                        setTimeout(() => {
+                            const activeCard = episodesOverlay.querySelector('#episodesList .episode-card.active');
+                            if (activeCard) {
+                                activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                            }
+                        }, 300); // Match CSS transition duration or adjust
                     }
-                }, 100);
+                }
+                handleMoreEpisodesClick(ed);
             };
             const preventKeystrokes = (e) => {
                 e.preventDefault();
@@ -2441,22 +2113,8 @@ async function initializeApp(optionData) {
                             moreEpisodesContainer.style.display = 'block'; // Ensure it's visible
                         }*/
                         if (moreEpisodesCard) {
-                            // Ensure only one listener by removing any potential previous one
-                            const handleClickMoreEpisodes = (e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                // console.log("More Episodes Card Clicked - Animating In");
-
-                                // Ensure setupEpisodesOverlay has made the layer visible and content is ready
-                                // The initial part of setupEpisodesOverlay (before this helper) handles content.
-                                // Make sure episodesLayer is displayed (it should be by now, but safeguard).
-                                if (episodesLayer) episodesLayer.style.display = 'flex';
-
-                                // Animate the overlay IN (swipe up)
-                                animateEpisodesOverlay(true); // true for open/swipe-up
-                            };
-                            moreEpisodesCard.removeEventListener('click', handleClickMoreEpisodes);
-                            moreEpisodesCard.addEventListener('click', handleClickMoreEpisodes);
+                            moreEpisodesCard.removeEventListener('click', setupEpisodesOverlay);
+                            moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
                             // Remove or update any dataset flags if you were using them previously
                             // delete moreEpisodesCard.dataset.listenerAttached; // Or set to 'new'
                         }
