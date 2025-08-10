@@ -691,13 +691,13 @@ function injectDynamicButtonStyles() {
                             width: 350px;
                         }
                         #season-episode-info {
-                            font-size: 1.1rem;
+                            font-size: 1.1rem; /* Base size for Desktop */
                             font-weight: 500;
                             color: #E5E7EB;
                             text-shadow: 1px 1px 4px rgba(0,0,0,0.6);
                         }
                         #movie-title-display {
-                            font-size: 2.5rem;
+                            font-size: 2.5rem; /* Base size for Desktop */
                             font-weight: 700;
                             color: #fff;
                             text-shadow: 2px 2px 8px rgba(0,0,0,0.7);
@@ -707,6 +707,119 @@ function injectDynamicButtonStyles() {
                             display: -webkit-box;
                             -webkit-line-clamp: 2;
                             -webkit-box-orient: vertical;
+                        }
+                        /* Responsive Font Sizes */
+                        /* 4K+ Ultra-wide (2561px+) */
+                        @media (min-width: 2561px) {
+                            #season-episode-info {
+                                font-size: 2.0rem;
+                            }
+                            #movie-title-display {
+                                font-size: 4.5rem;
+                            }
+                            #bottom-left-info {
+                                width: 700px;
+                            }
+                        }
+                        /* 2K Display (1921px-2560px) */
+                        @media (min-width: 1921px) and (max-width: 2560px) {
+                            #season-episode-info {
+                                font-size: 1.5rem;
+                            }
+                            #movie-title-display {
+                                font-size: 3.5rem;
+                            }
+                            #bottom-left-info {
+                                width: 700px;
+                            }
+                        }
+
+                        /* Large Desktop (1441px-1920px) */
+                        @media (min-width: 1441px) and (max-width: 1920px) {
+                            #season-episode-info {
+                                font-size: 1.25rem;
+                            }
+                            #movie-title-display {
+                                font-size: 3.0rem;
+                            }
+                            #bottom-left-info {
+                                width: 500px;
+                            }
+                        }
+
+                        /* Tablet (769px-1024px) */
+                        @media (min-width: 769px) and (max-width: 1024px) {
+                            #season-episode-info {
+                                font-size: 1.0rem;
+                            }
+                            #movie-title-display {
+                                font-size: 2.0rem;
+                            }
+                            #bottom-left-info {
+                                width: 500px;
+                            }
+                        }
+
+                        /* Mobile (481px-768px) */
+                        @media (min-width: 481px) and (max-width: 768px) {
+                            #season-episode-info {
+                                font-size: 0.8rem;
+                            }
+                            #movie-title-display {
+                                font-size: 1.5rem;
+                            }
+                            #bottom-left-info {
+                                width: 350px;
+                            }
+                        }
+
+                        /* Small Mobile (≤480px) */
+                        @media (max-width: 480px) {
+                            #season-episode-info {
+                                font-size: 0.7rem;
+                            }
+                            #movie-title-display {
+                                font-size: 1.3rem;
+                            }
+                            #bottom-left-info {
+                                width: 350px;
+                            }
+                        }
+
+                        /* Optional: High DPI adjustment (can be refined based on testing) */
+                        /* This slightly reduces the base font size on high DPI screens for visual consistency */
+                            @media (min-resolution: 2dppx) {
+                            #season-episode-info {
+                                font-size: calc(1.1rem * 0.95); 
+                            }
+                            #movie-title-display {
+                                font-size: calc(2.5rem * 0.95);
+                            }
+
+                            @media (max-width: 480px) {
+                                #season-episode-info { font-size: calc(0.7rem * 0.95); }
+                                #movie-title-display { font-size: calc(1.3rem * 0.95); }
+                            }
+                            @media (min-width: 481px) and (max-width: 768px) {
+                                #season-episode-info { font-size: calc(0.8rem * 0.95); }
+                                #movie-title-display { font-size: calc(1.5rem * 0.95); }
+                            }
+                            @media (min-width: 769px) and (max-width: 1024px) {
+                                 #season-episode-info { font-size: calc(1.0rem * 0.95); }
+                                #movie-title-display { font-size: calc(2.0rem * 0.95); }
+                            }
+                            @media (min-width: 1441px) and (max-width: 1920px) {
+                                #season-episode-info { font-size: calc(1.25rem * 0.95); }
+                                #movie-title-display { font-size: calc(3.0rem * 0.95); }
+                            }
+                            @media (min-width: 1921px) and (max-width: 2560px) {
+                                #season-episode-info { font-size: calc(1.5rem * 0.95); }
+                                #movie-title-display { font-size: calc(3.5rem * 0.95); }
+                            }
+                            @media (min-width: 2561px) {
+                                #season-episode-info { font-size: calc(2.0rem * 0.95); }
+                                #movie-title-display { font-size: calc(4.5rem * 0.95); }
+                            }
                         }
                         #more-episodes-container {
                             position: absolute;
@@ -1162,11 +1275,19 @@ async function initializeApp(optionData) {
                             <button id="closeEpisodesOverlay" class="close-episodes-button">&times;</button>
                         </div>
                         <div class="episodes-list-container">
-                            <button class="scroll-arrow left" id="scrollLeft"><</button>
+                            <button class="scroll-arrow left" id="scrollLeft" aria-label="Scroll Left">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                              </svg>
+                            </button>
                             <div class="episodes-list-inner">
                                 <div id="episodesList"></div>
                             </div>
-                            <button class="scroll-arrow right" id="scrollRight">></button>
+                            <button class="scroll-arrow right" id="scrollRight" aria-label="Scroll Right">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                              </svg>
+                            </button>
                         </div>
                     </div>
                     <div id="seasonCardOverlay">
@@ -1178,11 +1299,19 @@ async function initializeApp(optionData) {
                             <button id="closeSeasonsOverlay" class="close-episodes-button">&times;</button>
                         </div>
                         <div class="episodes-list-container">
-                            <button class="scroll-arrow left" id="seasonScrollLeft"><</button>
+                            <button class="scroll-arrow left" id="seasonScrollLeft" aria-label="Scroll Seasons Left">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                              </svg>
+                            </button>
                             <div class="episodes-list-inner">
                                 <div id="seasonCardList"></div>
                             </div>
-                            <button class="scroll-arrow right" id="seasonScrollRight">></button>
+                            <button class="scroll-arrow right" id="seasonScrollRight" aria-label="Scroll Seasons Right">
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                              </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1310,10 +1439,31 @@ async function initializeApp(optionData) {
             type: videoType, // Use the global videoType set by determinePlaybackQualityAndUrl
             moreVideoAttr: { "webkit-playsinline": true },
             layers: [
-                { name: 'topControls', html: mainTopControlsContainer, style: { position: 'absolute', width: '100%', height: 'auto', pointerEvents: 'auto' } },
+                {
+                    name: 'topControls', html: mainTopControlsContainer, style: { position: 'absolute', width: '100%', height: 'auto', pointerEvents: 'auto' },
+                    mounted: function (...args) {
+                        const backButton = args[0].querySelector('#backButton');
+                        backButton.onclick = () => {
+                            if (window.device == "web") {
+                                const event = new CustomEvent('playerAction', {
+                                    detail: {
+                                        action: 'backButton',
+                                        data: {}
+                                    }
+                                });
+                                document.dispatchEvent(event);
+                            } else {
+                                window.flutter_inappwebview.callHandler('playerAction', {
+                                    action: 'backButton',
+                                    data: {}
+                                });
+                            }
+                        };
+                    },
+                },
                 { name: 'playback', html: controlsPlayAndPauseElement, style: { width: '100%', height: '65px', alignSelf: 'center', boxSizing: 'border-box', opacity: "1", transition: "opacity 3s ease-in-out", position: 'absolute', pointerEvents: 'auto', top: '45%' } },
                 { name: 'bottomInfo', html: `<div id="bottom-left-info"><div id="season-episode-info"></div><div id="movie-title-display"></div></div><div id="more-episodes-container"></div>`, style: { position: 'absolute', inset: '0', pointerEvents: 'none' } },
-                { name: 'episodes', html: episodesOverlayHtml, style: { display: 'none' } },
+                { name: 'episodes', html: episodesOverlayHtml, style: { display: 'none', position: 'absolute', width: '100%', height: '250px', bottom: '0px', overflowY: 'hidden' } },
                 { name: 'lock', html: lockOverlayHtml, style: { display: 'none', zIndex: 50, width: '100%', height: '100%', left: '0px', borderRadius: '0px', backdropFilter: 'blur(10px)', backgroundColor: '#000000d9' } }
             ],
             controls: [
@@ -1342,6 +1492,7 @@ async function initializeApp(optionData) {
         // Use `artInstance` from now on
         const art = artInstance;
         art.on('ready', () => {
+            art.aspectRatio = '16:9';
             // Add event listener to the document
             const adPlugin = art.plugins.artplayerPluginAds;
             document.addEventListener('keydown', handleKeyPress);
@@ -1352,7 +1503,6 @@ async function initializeApp(optionData) {
             const forwardButton = art.layers.playback.querySelector('#forwardButton');
             const playPauseButton = art.layers.playback.querySelector('#playPauseButton');
             const volumeButton = art.layers.topControls.querySelector('#volumeButton');
-            const backButton = art.layers.topControls.querySelector('#backButton');
             const fullscreenButton = art.layers.topControls.querySelector('#fullscreenButton');
             const mainControlsContainer = art.layers.topControls.querySelector('#mainControlsContainer');
             const playbackControlsContainer = art.layers.playback.querySelector('#playbackControlsContainer');
@@ -1374,22 +1524,6 @@ async function initializeApp(optionData) {
                 if (element && !element.classList.contains('animate-out')) {
                     element.classList.add('animate-out');
                     element.addEventListener('animationend', () => element.remove(), { once: true });
-                }
-            };
-            backButton.onclick = () => {
-                if (window.device == "web") {
-                    const event = new CustomEvent('playerAction', {
-                        detail: {
-                            action: 'backButton',
-                            data: {}
-                        }
-                    });
-                    document.dispatchEvent(event)
-                } else {
-                    window.flutter_inappwebview.callHandler('playerAction', {
-                        action: 'backButton',
-                        data: {}
-                    });
                 }
             };
             subscribeButton.onclick = () => {
@@ -1518,10 +1652,11 @@ async function initializeApp(optionData) {
                 };
                 const hideOverlay = () => {
                     episodesOverlay.classList.remove('visible');
-                    if (artBottom) artBottom.style.visibility = 'visible';
+                    //episodesOverlay.style.display = 'none';
                     episodesOverlay.addEventListener('transitionend', () => {
                         episodesLayer.style.display = 'none';
                         episodesOverlay.classList.remove('seasons-active');
+                        if (artBottom) artBottom.style.display = 'flex';
                     }, { once: true });
                 };
                 const populateEpisodes = (seasonIndex) => {
@@ -1602,15 +1737,16 @@ async function initializeApp(optionData) {
                 }
                 episodesOverlay.classList.remove('seasons-active');
                 populateEpisodes(selectedSeasonIndex);
-                if (artBottom) artBottom.style.visibility = 'hidden';
+                if (artBottom) artBottom.style.display = 'none';
                 episodesLayer.style.display = 'flex';
                 setTimeout(() => {
                     episodesOverlay.classList.add('visible');
+                    //episodesOverlay.style.display = 'flex';
                     const activeCard = episodesList.querySelector('.episode-card.active');
                     if (activeCard) {
                         activeCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                     }
-                }, 10);
+                }, 100);
             };
             const preventKeystrokes = (e) => {
                 e.preventDefault();
@@ -2141,9 +2277,9 @@ async function initializeApp(optionData) {
             if (forwardButton) forwardButton.addEventListener('click', () => { art.seek = art.currentTime + 30; });
             if (playPauseButton) playPauseButton.addEventListener('click', () => art.toggle());
             if (fullscreenButton) fullscreenButton.addEventListener('click', () => window.device == "web" ? art.fullscreen = !art.fullscreen : window.flutter_inappwebview.callHandler('playerAction', {
-                    action: 'fullscreen',
-                    data: "auto"
-                }));
+                action: 'fullscreen',
+                data: "auto"
+            }));
             if (volumeButton) {
                 const volumeIconPathEl = volumeButton.querySelector('svg path');
                 const volumeOnIconPath = "M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
