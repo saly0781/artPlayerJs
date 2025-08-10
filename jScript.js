@@ -111,6 +111,29 @@ function cleanupCompletedMovies() {
         console.error("Error cleaning up completed movies from localStorage:", error);
     }
 }
+/**
+ * @function mergeSavedWithFreshEpisode
+ * @description Merges saved episode data with fresh API data while preserving continueWatching info
+ * @param {Object} savedEpisode - The saved episode data from localStorage (without video links)
+ * @param {Object} freshEpisode - The fresh episode data from API (with video links)
+ * @returns {Object} Merged episode data with fresh metadata and preserved continue watching
+ */
+const mergeSavedWithFreshEpisode = (savedEpisode, freshEpisode) => {
+    if (!savedEpisode || !freshEpisode) return freshEpisode;
+
+    // Preserve continue watching data from saved episode
+    const preservedContinueWatching = savedEpisode.continueWatching || {
+        inMinutes: 0,
+        inPercentage: 0
+    };
+
+    // Use fresh episode as base (includes video links, updated metadata, etc.)
+    // and merge with preserved continue watching data
+    return {
+        ...freshEpisode, // All fresh data from API (including video links)
+        continueWatching: preservedContinueWatching // Preserved watching progress
+    };
+};
 // Function to handle keypress events for S and E keys
 async function saveMovieData(sData, eData) {
     // Save the movie data to the global savingData object
@@ -708,6 +731,12 @@ function injectDynamicButtonStyles() {
                             -webkit-line-clamp: 2;
                             -webkit-box-orient: vertical;
                         }
+                        #more-episodes-container {
+                            position: absolute;
+                            right: 0;
+                            padding: 50px;
+                            bottom: 55px;
+                        }
                         /* Responsive Font Sizes */
                         /* 4K+ Ultra-wide (2561px+) */
                         @media (min-width: 2561px) {
@@ -720,6 +749,17 @@ function injectDynamicButtonStyles() {
                             #bottom-left-info {
                                 width: 700px;
                             }
+                            #more-episodes-container {
+                                padding: 50px;
+                                bottom: 55px;
+                            }
+                            #bottom-left-info {
+                                bottom: 100px;
+                                left: 50px;
+                            }
+                            #mainControlsContainer {
+                                padding: 20px 50px 10px;
+                            }
                         }
                         /* 2K Display (1921px-2560px) */
                         @media (min-width: 1921px) and (max-width: 2560px) {
@@ -731,6 +771,17 @@ function injectDynamicButtonStyles() {
                             }
                             #bottom-left-info {
                                 width: 700px;
+                            }
+                            #more-episodes-container {
+                                padding: 50px;
+                                bottom: 55px;
+                            }
+                            #bottom-left-info {
+                                bottom: 100px;
+                                left: 50px;
+                            }
+                            #mainControlsContainer {
+                                padding: 20px 50px 10px;
                             }
                         }
 
@@ -745,6 +796,17 @@ function injectDynamicButtonStyles() {
                             #bottom-left-info {
                                 width: 500px;
                             }
+                            #more-episodes-container {
+                                padding: 50px;
+                                bottom: 55px;
+                            }
+                            #bottom-left-info {
+                                bottom: 100px;
+                                left: 50px;
+                            }
+                            #mainControlsContainer {
+                                padding: 20px 50px 10px;
+                            }
                         }
 
                         /* Tablet (769px-1024px) */
@@ -757,6 +819,17 @@ function injectDynamicButtonStyles() {
                             }
                             #bottom-left-info {
                                 width: 500px;
+                            }
+                            #more-episodes-container {
+                                padding: 50px;
+                                bottom: 55px;
+                            }
+                            #bottom-left-info {
+                                bottom: 100px;
+                                left: 50px;
+                            }
+                            #mainControlsContainer {
+                                padding: 20px 50px 10px;
                             }
                         }
 
@@ -771,6 +844,17 @@ function injectDynamicButtonStyles() {
                             #bottom-left-info {
                                 width: 350px;
                             }
+                            #more-episodes-container {
+                                padding: 20px;
+                                bottom: 55px;
+                            }
+                            #bottom-left-info {
+                                bottom: 75px;
+                                left: 20px;
+                            }
+                            #mainControlsContainer {
+                                padding: 20px 20px 10px;
+                            }
                         }
 
                         /* Small Mobile (≤480px) */
@@ -783,6 +867,17 @@ function injectDynamicButtonStyles() {
                             }
                             #bottom-left-info {
                                 width: 350px;
+                            }
+                            #more-episodes-container {
+                                padding: 20px;
+                                bottom: 55px;
+                            }
+                            #bottom-left-info {
+                                bottom: 75px;
+                                left: 20px;
+                            }
+                            #mainControlsContainer {
+                                padding: 20px 20px 10px;
                             }
                         }
 
@@ -821,12 +916,7 @@ function injectDynamicButtonStyles() {
                                 #movie-title-display { font-size: calc(4.5rem * 0.95); }
                             }
                         }
-                        #more-episodes-container {
-                            position: absolute;
-                            right: 0;
-                            padding: 50px;
-                            bottom: 55px;
-                        }
+                       
                         #more-episodes-card {
                             cursor: pointer;
                             pointer-events: auto;
@@ -1385,19 +1475,25 @@ async function initializeApp(optionData) {
         let savedEpisode = getSavedEpisode(movieId);
         let currentMovieData;
         if (savedEpisode) {
-            const freshEpisodeData = seriesData.seasons
-                .flatMap(s => s.episodes)
-                .find(ep => ep.episodeId === savedEpisode.episodeId);
-            if (freshEpisodeData) {
-                currentMovieData = {
-                    ...savedEpisode,
-                    video: freshEpisodeData.video,
-                    locked: freshEpisodeData.locked
-                };
+
+            // Get all episodes in a flat array for easier searching
+            const allFreshEpisodes = seriesData.seasons.flatMap(s => s.episodes);
+
+            // Find matching fresh episode with video links
+            const matchingFreshEpisode = allFreshEpisodes.find(ep => ep.episodeId === savedEpisode.episodeId);
+
+            if (matchingFreshEpisode) {
+                // Merge saved data (continue watching) with fresh data (video links, updated metadata)
+                currentMovieData = mergeSavedWithFreshEpisode(savedEpisode, matchingFreshEpisode);
+
+                // Update localStorage with the merged data (video links will be excluded automatically)
+                saveEpisodeProgress(currentMovieData);
+
             } else {
                 currentMovieData = seriesData.seasons[0].episodes[0];
             }
         } else {
+            // No saved episode found
             currentMovieData = seriesData.seasons[0].episodes[0];
         }
         const loadingOverlay = document.getElementById('loading-overlay');
@@ -2191,7 +2287,7 @@ async function initializeApp(optionData) {
             // --- End New Ad Helper Functions ---
 
             // --- Initial UI Setup ---
-            if (artBottom) artBottom.style.padding = '30px 50px 30px';
+            if (artBottom) window.innerWidth >= 750 ? artBottom.style.padding = '30px 50px 30px' : artBottom.style.padding = '10px 20px 10px';
             if (progressBar) progressBar.style.height = '5px';
             if (progressBarInner) progressBarInner.style.backgroundColor = '#393939';
             if (centerControls) centerControls.style.paddingBottom = '20px';
@@ -2349,6 +2445,11 @@ async function initializeApp(optionData) {
                 playbackControlsContainer.classList.toggle('hidden', !state);
                 bottomLeftInfo.classList.toggle('hidden', !state);
                 moreEpisodesContainer.classList.toggle('hidden', !state);
+                if (state) {
+                    if (artBottom) window.innerWidth >= 750 ? artBottom.style.padding = '30px 50px 30px' : artBottom.style.padding = '10px 20px 10px';
+                } else {
+                    if (artBottom) artBottom.style.padding = '0px 0px 0px'; // Adjust padding when controls are hidden
+                }
             });
             art.on('fullscreen', (isFull) => {
                 if (fullscreenButton) {
@@ -2416,6 +2517,7 @@ async function initializeApp(optionData) {
 
                 // --- Ad Triggering Logic ---
                 if (currentMovieData.adstatus === true && !isAdPlaying) {
+                    console.log("Ad triggering logic activated.", currentMovieData.adstatus, isAdPlaying);
                     const percentage = (art.currentTime / art.duration) * 100;
                     const newAdRegion = getCurrentAdRegion(percentage);
 
@@ -2504,16 +2606,3 @@ async function initializeApp(optionData) {
         console.error('Failed to initialize player:', error);
     }
 }
-// Example of how to start the application
-//initializeApp();
-// destroyApp();
-// Example of how to start the application
-
-initializeApp({
-    "movieId": "07de7180-1abe-43dc-b3fa-afabcda34469",
-    "userId": "",
-    "deviceType": "IOS",
-    "language": "rn",
-    "device": "web",
-});
-// destroyApp();
