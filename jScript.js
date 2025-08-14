@@ -1468,19 +1468,23 @@ async function initializeApp(optionData) {
                 list = list.slice(0, 15);
             }
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(list));
-            window.flutter_inappwebview.callHandler('playerAction', {
-                action: 'saveEpisodeProgress',
-                data: list
-            });
+            if (window.device == "app") {
+                window.flutter_inappwebview.callHandler('playerAction', {
+                    action: 'saveEpisodeProgress',
+                    data: list
+                });
+            }
         };
         const removeEpisodeProgress = (movieId) => {
             let list = getContinueWatchingList();
             const updatedList = list.filter(item => item.movieId !== movieId);
             localStorage.setItem(CONTINUE_WATCHING_KEY, JSON.stringify(updatedList));
-            window.flutter_inappwebview.callHandler('playerAction', {
-                action: 'saveEpisodeProgress',
-                data: list
-            });
+            if (window.device == "app") {
+                window.flutter_inappwebview.callHandler('playerAction', {
+                    action: 'saveEpisodeProgress',
+                    data: list
+                });
+            }
         };
         const getSavedEpisode = (movieId) => {
             const list = getContinueWatchingList();
