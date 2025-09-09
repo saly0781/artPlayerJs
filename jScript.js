@@ -138,7 +138,7 @@ const mergeSavedWithFreshEpisode = (savedEpisode, freshEpisode) => {
 async function saveMovieData(sData, eData) {
     // Save the movie data to the global savingData object
     if (sData._id == eData._id) {
-        const response = await fetch("https://api.rebamovie.com/updatedata", {
+        const response = await fetch("https://api.rebamovie.com/updateAnalytics", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
