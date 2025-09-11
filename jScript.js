@@ -745,6 +745,8 @@ function injectDynamicButtonStyles() {
                             }
                             #movie-title-display {
                                 font-size: 4.5rem;
+                                height: 80px; 
+                                margin-bottom: 10px;
                             }
                             #bottom-left-info {
                                 width: 700px;
@@ -768,6 +770,8 @@ function injectDynamicButtonStyles() {
                             }
                             #movie-title-display {
                                 font-size: 3.5rem;
+                                height: 80px; 
+                                margin-bottom: 10px;
                             }
                             #bottom-left-info {
                                 width: 700px;
@@ -792,6 +796,8 @@ function injectDynamicButtonStyles() {
                             }
                             #movie-title-display {
                                 font-size: 3.0rem;
+                                height: 80px; 
+                                margin-bottom: 10px;
                             }
                             #bottom-left-info {
                                 width: 500px;
@@ -893,27 +899,27 @@ function injectDynamicButtonStyles() {
 
                             @media (max-width: 480px) {
                                 #season-episode-info { font-size: calc(0.7rem * 0.95); }
-                                #movie-title-display { font-size: calc(1.3rem * 0.95); }
+                                #movie-title-display { font-size: calc(1.3rem * 0.95); width: 100px; }
                             }
                             @media (min-width: 481px) and (max-width: 768px) {
                                 #season-episode-info { font-size: calc(0.8rem * 0.95); }
-                                #movie-title-display { font-size: calc(1.5rem * 0.95); }
+                                #movie-title-display { font-size: calc(1.5rem * 0.95); width: 200px; }
                             }
                             @media (min-width: 769px) and (max-width: 1024px) {
                                  #season-episode-info { font-size: calc(1.0rem * 0.95); }
-                                #movie-title-display { font-size: calc(2.0rem * 0.95); }
+                                #movie-title-display { font-size: calc(2.0rem * 0.95); width: 300px; }
                             }
                             @media (min-width: 1441px) and (max-width: 1920px) {
                                 #season-episode-info { font-size: calc(1.25rem * 0.95); }
-                                #movie-title-display { font-size: calc(3.0rem * 0.95); }
+                                #movie-title-display { font-size: calc(3.0rem * 0.95); width: 400px; height: 80px; margin-bottom: 10px; }
                             }
                             @media (min-width: 1921px) and (max-width: 2560px) {
                                 #season-episode-info { font-size: calc(1.5rem * 0.95); }
-                                #movie-title-display { font-size: calc(3.5rem * 0.95); }
+                                #movie-title-display { font-size: calc(3.5rem * 0.95); width: 500px; height: 80px; margin-bottom: 10px; }
                             }
                             @media (min-width: 2561px) {
                                 #season-episode-info { font-size: calc(2.0rem * 0.95); }
-                                #movie-title-display { font-size: calc(4.5rem * 0.95); }
+                                #movie-title-display { font-size: calc(4.5rem * 0.95); width: 700px; height: 80px; margin-bottom: 10px; }
                             }
                         }
                        
@@ -1639,6 +1645,10 @@ async function initializeApp(optionData) {
             const subscribeButton = lockLayer.querySelector('#subscribeButton');
             const helpButton = lockLayer.querySelector('#helpButton');
             let videoPlayedOnce = false; // Track if the video is played for once
+            let accumulatedWatchTime = 0;
+            let lastCurrentTime = -1;
+            let tenMinuteViewRecorded = false;
+
             // --- Helper Functions ---
             const formatTime = (seconds) => new Date(seconds * 1000).toISOString().substr(11, 8);
             const animateAndRemove = (element) => {
@@ -1678,14 +1688,34 @@ async function initializeApp(optionData) {
                     if (seasonEpInfoEl) {
                         seasonEpInfoEl.textContent = `Filme`;
                         seasonEpInfoEl.style.display = 'block';
+                        seasonEpInfoEl.style.marginBottom = '10px';
                     }
                 } else {
                     if (seasonEpInfoEl) {
                         seasonEpInfoEl.textContent = `Season ${currentMovieData.position.seasonIndex + 1}, EP ${currentMovieData.episode}${currentMovieData.partName || ''}`;
                         seasonEpInfoEl.style.display = 'block';
+                        seasonEpInfoEl.style.marginBottom = '10px';
                     }
                 }
-                if (movieTitleEl) movieTitleEl.textContent = currentMovieData.title;
+                if (movieTitleEl) {
+                    // Check if a logo URL exists and is not empty/invalid
+                    if (currentMovieData.logo && currentMovieData.logo.trim() !== '' && !currentMovieData.logo.includes('not found')) {
+                        // Hide the text title
+                        movieTitleEl.textContent = '';
+                        // Create and insert the image element
+                        const logoImg = document.createElement('img');
+                        logoImg.src = currentMovieData.logo;
+                        logoImg.alt = currentMovieData.title || 'Movie Logo';
+                        logoImg.style.maxWidth = '100%'; // Ensure it doesn't overflow
+                        logoImg.style.height = '100%'; // Maintain aspect ratio
+                        // Optional: Add a class for further styling via CSS
+                        // logoImg.className = 'movie-logo-image';
+                        movieTitleEl.appendChild(logoImg);
+                    } else {
+                        // No logo, display the text title
+                        movieTitleEl.textContent = currentMovieData.title;
+                    }
+                }
                 art.poster = currentMovieData.longCover;
                 art.layers.topControls.querySelector('#hdSize').textContent = currentMovieData.size.hdSize;
                 art.layers.topControls.querySelector('#midSize').textContent = currentMovieData.size.midSize;
@@ -2203,6 +2233,12 @@ async function initializeApp(optionData) {
                     // Use the original URL directly
                     art.switchUrl(newUrl, currentMovieData.title).then(() => {
                         // if (art.loading) art.loading.show = false; // Hide loading indicator
+                        // Reset the 10-minute view recorded flag for the new episode
+                        tenMinuteViewRecorded = false;
+                        // Reset accumulated watch time for the new episode
+                        accumulatedWatchTime = 0;
+                        // Reset last current time tracker for the new episode
+                        lastCurrentTime = -1; // Or art.currentTime if you want to start counting from load
                         art.play();
                         updateUIForNewEpisode();
                         actionButtonsContainer.innerHTML = '';
@@ -2551,11 +2587,51 @@ async function initializeApp(optionData) {
                 if (lockOverlayShown_ || isAdPlaying) {
                     art.pause(); // Pause the video if lock overlay is shown
                     exitFullscreenIfNeeded(); // Exit fullscreen if needed
+                    lastCurrentTime = art.currentTime;
                     return; // Exit early to prevent further processing    
                 }
                 if (videoPlayedOnce === false) {
                     videoPlayedOnce = true; // Set the flag to true after the first play
                     if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                }
+                const currentPlayTime = art.currentTime;
+                // Only calculate and add time if the video is actually playing
+                if (art.playing) {
+                    if (lastCurrentTime >= 0) { // Ensure lastCurrentTime is initialized
+                        let deltaTime = currentPlayTime - lastCurrentTime;
+                        const expectedMaxDelta = 0.5; // Adjust tolerance as needed
+                        if (deltaTime > expectedMaxDelta) {
+                            // console.log("Large time jump detected (seek?), ignoring for watch time.");
+                            deltaTime = 0; // Don't add this large jump to watch time
+                            // Alternatively, you could just not add deltaTime if it's > expectedMaxDelta
+                            // but setting to 0 is clearer intent.
+                        } else if (deltaTime < 0) {
+                            // Handle backwards seeks or playback resets (e.g., replay)
+                            // Simply don't add negative time. accumulatedWatchTime only increases.
+                            deltaTime = Math.max(0, deltaTime); // Ensure non-negative
+                        }
+                        // --- End Optional Robustness ---
+
+                        // Add the calculated (and potentially adjusted) deltaTime to the total
+                        accumulatedWatchTime += deltaTime;
+                    }
+                }
+                // Always update the last known time for the next comparison
+                lastCurrentTime = currentPlayTime;
+
+                // Check if the accumulated watch time has crossed the 10-minute (600 second) threshold
+                // and if we haven't recorded the view yet for this playback instance.
+                if (!tenMinuteViewRecorded && accumulatedWatchTime >= 10) {
+                    tenMinuteViewRecorded = true;
+                    fetch("https://api.rebamovie.com/updateAnalytics", {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            "databaseName": currentMovieData.type == "S" ? "Season" + (Number(currentMovieData.position.seasonIndex) + 1) : "Items",
+                            "_id": currentMovieData.episodeId,
+                            "activity": "view"
+                        })
+                    });
                 }
                 if (currentMovieData.locked == true && !lockOverlayShown_ && currentMovieData.type == 'S') {
                     showLockOverlay();
