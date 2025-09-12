@@ -2621,7 +2621,7 @@ async function initializeApp(optionData) {
 
                 // Check if the accumulated watch time has crossed the 10-minute (600 second) threshold
                 // and if we haven't recorded the view yet for this playback instance.
-                if (!tenMinuteViewRecorded && accumulatedWatchTime >= 10) {
+                if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) {
                     tenMinuteViewRecorded = true;
                     fetch("https://api.rebamovie.com/updateAnalytics", {
                         method: 'POST',
