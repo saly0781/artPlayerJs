@@ -146,7 +146,10 @@ async function saveMovieData(sData, eData) {
                 "_id": eData._id,
                 "startTime": sData.startTime,
                 "endTime": eData.endTime,
-                "totalTime": eData.totalTime
+                "totalTime": eData.totalTime,
+                "MovieId": optionData?.movieId,
+                "userId": optionData?.userId,
+                "deviceType": "IOS"
             })
         });
         const event = new CustomEvent('playerAction', {
@@ -2630,6 +2633,7 @@ async function initializeApp(optionData) {
                             "databaseName": currentMovieData.type == "S" ? "Season" + (Number(currentMovieData.position.seasonIndex) + 1) : "Items",
                             "_id": currentMovieData.episodeId,
                             "activity": "view"
+                            
                         })
                     });
                 }
