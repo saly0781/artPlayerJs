@@ -146,10 +146,7 @@ async function saveMovieData(sData, eData) {
                 "_id": eData._id,
                 "startTime": sData.startTime,
                 "endTime": eData.endTime,
-                "totalTime": eData.totalTime,
-                "MovieId": optionData?.movieId,
-                "userId": optionData?.userId,
-                "deviceType": "IOS"
+                "totalTime": eData.totalTime
             })
         });
         const event = new CustomEvent('playerAction', {
