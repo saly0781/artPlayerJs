@@ -1444,6 +1444,9 @@ async function initializeApp(optionData) {
                 "deviceType": "IOS"
             })
         });
+        console.log(response);
+        console.log(response.status);
+        console.log(typeof response);
         if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
         const apiData = await response.json();
         let seriesData = {
@@ -1453,7 +1456,6 @@ async function initializeApp(optionData) {
                 episodes: apiData.data.episodes[index]
             }))
         };
-        console.log(apiData);
         allLolls = apiData.ads
         const CONTINUE_WATCHING_KEY = 'continuewatching';
         const getContinueWatchingList = () => {
