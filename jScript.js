@@ -1440,8 +1440,7 @@ async function initializeApp(optionData) {
         const response = await fetch("https://api.rebamovie.com/cinemaData", {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'App-Version': '1.0.0'
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 "MovieId": optionData.movieId,
