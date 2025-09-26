@@ -1357,6 +1357,11 @@ async function initializeApp(optionData) {
     window.language = optionData.language;
     window.device = optionData.device;
     languageCode = optionData.language == 'en' ? 'en' : 'rw';
+    let h = {
+        'Content-Type': 'application/json',
+        'appversion': '1.0.0'
+    };
+
     console.log("Initializing app with device:", optionData.device);
     let lockOverlayShown_ = false;
     // --- Ad Tracking Flags (inside initializeApp, outside art.on('ready')) ---
@@ -2621,7 +2626,7 @@ async function initializeApp(optionData) {
 
                 // Check if the accumulated watch time has crossed the 10-minute (600 second) threshold
                 // and if we haven't recorded the view yet for this playback instance.
-                if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) {
+                if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) { 
                     tenMinuteViewRecorded = true;
                     fetch("https://api.rebamovie.com/updateAnalytics", {
                         method: 'POST',
