@@ -1435,6 +1435,7 @@ async function initializeApp(optionData) {
                 </div>
             `;
     try {
+        console.log("✅ STEP 0");
         const response = await fetch("https://api.rebamovie.com/cinemaData", {
             method: 'POST',
             headers: window.device != "app" ? { 'Content-Type': 'application/json' } : h,
@@ -1444,10 +1445,15 @@ async function initializeApp(optionData) {
                 "deviceType": "IOS"
             })
         });
+        console.log("✅ STEP 1");
         console.log(response);
+        console.log("✅ STEP 2");
         console.log(response.status);
+        console.log("✅ STEP 3");
         console.log(typeof response);
+        console.log("✅ STEP 4");
         if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+        console.log("✅ STEP 5");
         const apiData = await response.json();
         let seriesData = {
             seasons: apiData.data.seasons.map((seasonName, index) => ({
@@ -1456,6 +1462,7 @@ async function initializeApp(optionData) {
                 episodes: apiData.data.episodes[index]
             }))
         };
+        console.log("✅ STEP 6");
         allLolls = apiData.ads
         const CONTINUE_WATCHING_KEY = 'continuewatching';
         const getContinueWatchingList = () => {
