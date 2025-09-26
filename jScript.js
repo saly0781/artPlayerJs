@@ -1357,10 +1357,6 @@ async function initializeApp(optionData) {
     window.language = optionData.language;
     window.device = optionData.device;
     languageCode = optionData.language == 'en' ? 'en' : 'rw';
-    let h = {
-        'Content-Type': 'application/json',
-        'appversion': '1.0.0'
-    };
 
     console.log("Initializing app with device:", optionData.device);
     let lockOverlayShown_ = false;
@@ -1438,7 +1434,10 @@ async function initializeApp(optionData) {
         console.log("✅ STEP 0");
         const response = await fetch("https://api.rebamovie.com/cinemaData", {
             method: 'POST',
-            headers: window.device != "app" ? { 'Content-Type': 'application/json' } : h,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(optionData.device === "app" && { 'App-Version': '1.0.0' })
+            },
             body: JSON.stringify({
                 "MovieId": optionData.movieId,
                 "userId": optionData.userId,
