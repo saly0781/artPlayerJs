@@ -1453,6 +1453,7 @@ async function initializeApp(optionData) {
                 episodes: apiData.data.episodes[index]
             }))
         };
+        console.log(apiData);
         allLolls = apiData.ads
         const CONTINUE_WATCHING_KEY = 'continuewatching';
         const getContinueWatchingList = () => {
