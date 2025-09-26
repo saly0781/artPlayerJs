@@ -1366,6 +1366,11 @@ async function initializeApp(optionData) {
     let postAdShown = false;
     let isAdPlaying = false;
     let hideOverlay;
+    let h = {'Content-Type': 'application/json'};
+    let h2 = {
+        'Content-Type': 'application/json',
+        'appversion': '1.0.0'
+    };
     // --- End Ad Tracking Flags ---
 
     const episodesOverlayHtml = `
@@ -1436,7 +1441,7 @@ async function initializeApp(optionData) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              ...(optionData.device === "app" && { 'App-Version': '1.0.0' })
+              'appversion': '1.0.0'
             },
             body: JSON.stringify({
                 "MovieId": optionData.movieId,
