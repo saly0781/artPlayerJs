@@ -1441,7 +1441,7 @@ async function initializeApp(optionData) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'X-App-Version': '1.0.0'
+              'Content-Language': '1.0.0'
             },
             body: JSON.stringify({
                 "MovieId": optionData.movieId,
