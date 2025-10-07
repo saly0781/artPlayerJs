@@ -1369,7 +1369,7 @@ async function initializeApp(optionData) {
     let h = {'Content-Type': 'application/json'};
     let h2 = {
         'Content-Type': 'application/json',
-        'appversion': '1.0.0'
+        'appversion': '1.0.1'
     };
     // --- End Ad Tracking Flags ---
 
@@ -1440,7 +1440,7 @@ async function initializeApp(optionData) {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Content-Language': '1.0.0'
+              'Content-Language': '1.0.1'
             },
             body: JSON.stringify({
                 "MovieId": optionData.movieId,
