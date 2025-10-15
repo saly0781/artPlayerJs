@@ -146,7 +146,8 @@ async function saveMovieData(sData, eData) {
                 "_id": eData._id,
                 "startTime": sData.startTime,
                 "endTime": eData.endTime,
-                "totalTime": eData.totalTime
+                "totalTime": eData.totalTime,
+                "userId": window.userId
             })
         });
         const event = new CustomEvent('playerAction', {
@@ -1356,6 +1357,7 @@ async function initializeApp(optionData) {
     window.movieId = optionData.movieId;
     window.language = optionData.language;
     window.device = optionData.device;
+    window.userId = optionData.userId;
     languageCode = optionData.language == 'en' ? 'en' : 'rw';
 
     console.log("Initializing app with device:", optionData.device);
@@ -2639,7 +2641,8 @@ async function initializeApp(optionData) {
                         body: JSON.stringify({
                             "databaseName": currentMovieData.type == "S" ? "Season" + (Number(currentMovieData.position.seasonIndex) + 1) : "Items",
                             "_id": currentMovieData.episodeId,
-                            "activity": "view"
+                            "activity": "view",
+                            "movieId": currentMovieData.movieId
                             
                         })
                     });
