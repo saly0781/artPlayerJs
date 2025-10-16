@@ -150,6 +150,8 @@ async function saveMovieData(sData, eData) {
                 "userId": window.userId
             })
         });
+        const data = await response.json();
+        if (data.success === true) {
         const event = new CustomEvent('playerAction', {
             detail: {
                 action: 'saveTime',
@@ -163,6 +165,7 @@ async function saveMovieData(sData, eData) {
             }
         });
         document.dispatchEvent(event); // dispatch globally
+    }
     }
 }
 function handleKeyPress(event) {
