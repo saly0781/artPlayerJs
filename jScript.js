@@ -1354,6 +1354,22 @@ function _x(video, url, art) {
         art.notice.show = "Unsupported playback format: mpd";
     }
 }
+async function fetchWithRetry(url, options, retries = 4, delay = 1000) {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const response = await fetch(url, options);
+        if (!response.ok) {
+          throw new Error(`API request failed with status ${response.status}`);
+        }
+        const data = await response.json();
+        return data; // success
+      } catch (error) {
+        console.warn(`Attempt ${attempt} failed: ${error.message}`);
+        if (attempt === retries) throw error; // throw after last attempt
+        await new Promise(resolve => setTimeout(resolve, delay)); // wait before retry
+      }
+    }
+  }
 async function initializeApp(optionData) {
     // Add cleanup at the very beginning of initialization
     cleanupCompletedMovies();
@@ -1441,20 +1457,18 @@ async function initializeApp(optionData) {
                 </div>
             `;
     try {
-        const response = await fetch("https://api.rebamovie.com/cinemaData", {
-            method: 'POST',
+        const apiData = await fetchWithRetry("https://api.rebamovie.com/cinemaData", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
-              'Content-Language': '1.0.1'
+              "Content-Type": "application/json",
+              "Content-Language": "1.0.1"
             },
             body: JSON.stringify({
-                "MovieId": optionData.movieId,
-                "userId": optionData.userId,
-                "deviceType": "IOS"
+              MovieId: optionData.movieId,
+              userId: optionData.userId,
+              deviceType: "IOS"
             })
-        });
-        if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-        const apiData = await response.json();
+          }, 4, 1000); // 4 retries, 1 second between each
         let seriesData = {
             seasons: apiData.data.seasons.map((seasonName, index) => ({
                 season: index + 1,
