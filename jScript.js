@@ -1476,6 +1476,18 @@ async function initializeApp(optionData) {
                 episodes: apiData.data.episodes[index]
             }))
         };
+        if (seriesData?.seasons[0]?.episodes[0]?.seoTitle) {
+            const event = new CustomEvent('playerAction', {
+                detail: {
+                    action: 'seoData',
+                    data: {
+                        seoTitle: seriesData?.seasons[0]?.episodes[0]?.seoTitle,
+                        description: seriesData?.seasons[0]?.episodes[0]?.description,
+                    }
+                }
+            });
+            document.dispatchEvent(event); // dispatch globally
+        }
         console.log("✅ STEP 6");
         allLolls = apiData.ads
         const CONTINUE_WATCHING_KEY = 'continuewatching';
