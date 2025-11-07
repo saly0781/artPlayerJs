@@ -2206,7 +2206,7 @@ async function initializeApp(optionData) {
                     }
                 } else {
                     // showNext is true but no nextEpisodeData -> Hide
-                    moreEpisodesContainer.style.display = 'none';
+                  //  moreEpisodesContainer.style.display = 'none';
                 }
             }
             /**
