@@ -2170,44 +2170,39 @@ async function initializeApp(optionData) {
                     } else {
                         moreEpisodesContainer.style.display = 'none'; // Hide if card creation failed
                     }
-                } else if (!showNext) {
-                    // --- Show Standard "More Episodes" Card ---
-                    if (nextEpisodeData) { // Only show if there *is* a next episode
-                        moreEpisodesContainer.innerHTML = `
-                            <div id="more-episodes-card">
-                                <div class="next-episode-text">
-                                    <h3>${optionData.language != "en" ? "Izindi" : "Next"}</h3>
-                                    <p>${optionData.language != "en" ? "Episode" : "Episode"}</p>
-                                </div>
-                                <div class="next-episode-thumbnail">
-                                    <img src="${currentMovieData.image}" onerror="this.style.display='none'" alt="Next Episode">
-                                    <div class="play-overlay">
-                                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
-                        /*if (moreEpisodesCard) {
-                            moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
-                            // Reset border styles potentially left from countdown
-                            moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-                            moreEpisodesCard.style.borderImage = '';
-                            moreEpisodesContainer.style.display = 'block'; // Ensure it's visible
-                        }*/
-                        if (moreEpisodesCard) {
-                            moreEpisodesCard.removeEventListener('click', setupEpisodesOverlay);
-                            moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
-                            // Remove or update any dataset flags if you were using them previously
-                            // delete moreEpisodesCard.dataset.listenerAttached; // Or set to 'new'
-                        }
-                    } else {
-                       // moreEpisodesContainer.style.display = 'none'; // Hide if no next episode
-                    }
                 } else {
-                    // showNext is true but no nextEpisodeData -> Hide
-                  //  moreEpisodesContainer.style.display = 'none';
+                    const displayText = nextEpisodeData 
+                    ? (optionData.language != "en" ? "Izindi" : "Next")
+                    : (optionData.language != "en" ? "Izindi" : "Episodes");
+                
+                const displaySubtext = nextEpisodeData
+                    ? (optionData.language != "en" ? "Episode" : "Episode")
+                    : (optionData.language != "en" ? "Episode" : "All Episodes");
+                
+                moreEpisodesContainer.innerHTML = `
+                    <div id="more-episodes-card">
+                        <div class="next-episode-text">
+                            <h3>${displayText}</h3>
+                            <p>${displaySubtext}</p>
+                        </div>
+                        <div class="next-episode-thumbnail">
+                            <img src="${currentMovieData.image}" onerror="this.style.display='none'" alt="Episodes">
+                            <div class="play-overlay">
+                                <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
+                if (moreEpisodesCard) {
+                    moreEpisodesCard.removeEventListener('click', setupEpisodesOverlay);
+                    moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
+                    moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                    moreEpisodesCard.style.borderImage = '';
+                    moreEpisodesContainer.style.display = 'block';
                 }
+                } 
             }
             /**
              * @function switchToEpisode
