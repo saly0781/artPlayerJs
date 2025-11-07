@@ -2202,7 +2202,7 @@ async function initializeApp(optionData) {
                             // delete moreEpisodesCard.dataset.listenerAttached; // Or set to 'new'
                         }
                     } else {
-                        moreEpisodesContainer.style.display = 'none'; // Hide if no next episode
+                       // moreEpisodesContainer.style.display = 'none'; // Hide if no next episode
                     }
                 } else {
                     // showNext is true but no nextEpisodeData -> Hide
