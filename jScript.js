@@ -2389,19 +2389,6 @@ async function initializeApp(optionData) {
                 if (actionButtonsContainer) {
                     actionButtonsContainer.innerHTML = ''; // Clear any existing buttons
                 }
-                // Remove all this action button creation code:
-                // const wrapper = document.createElement('div');
-                // wrapper.id = `ad-countdown-${adType}`;
-                // wrapper.className = 'action-button-wrapper';
-                // wrapper.style.width = '100%';
-                // const button = document.createElement('button');
-                // button.className = 'dynamic-action-button';
-                // button.disabled = true;
-                // button.style.opacity = '0.6';
-                // button.style.cursor = 'not-allowed';
-                // wrapper.appendChild(button);
-                // actionButtonsContainer.innerHTML = '';
-                // actionButtonsContainer.appendChild(wrapper);
             
                 // === CHANGE 2: Update ONLY the persistent overlay ===
                 const updateCountdown = () => {
@@ -2431,13 +2418,6 @@ async function initializeApp(optionData) {
                             adCountdownOverlay.style.display = 'none';
                             art.layers.adCountdown.style.display = 'none';
                         }
-                        // === END CHANGE 3 ===
-            
-                        // === REMOVE the action button cleanup ===
-                        // Remove countdown button
-                        // if (wrapper.parentNode === actionButtonsContainer) {
-                        //     actionButtonsContainer.removeChild(wrapper);
-                        // }
             
                         // Play the ad after countdown
                         if (adPlugin && pendingAdType === adType) { // Only play if this is still the pending ad
@@ -2650,14 +2630,52 @@ async function initializeApp(optionData) {
                 });
             }
             // --- ArtPlayer Event Hooks ---
-            art.on('play', () => {
-                if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
-            });
             art.on('pause', () => {
-                //isPlaying = false; // Set the flag to false when the video is paused
-                setTimeout(function () {
-                    if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
-                }, 100);
+                if (playPauseButton) {
+                    playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
+                }
+            });
+            
+            art.on('play', () => {
+                if (playPauseButton) {
+                    playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                }
+            });
+            
+            // Also add seeking event to handle seek state properly
+            art.on('video:seek', () => {
+                // When seeking starts, show pause icon (video is effectively paused during seek)
+                if (playPauseButton) {
+                    playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
+                }
+            });
+            
+            art.on('video:seeked', () => {
+                // After seek completes, restore correct state based on actual playback
+                if (art.playing) {
+                    if (playPauseButton) {
+                        playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                    }
+                } else {
+                    if (playPauseButton) {
+                        playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
+                    }
+                }
+            });
+            art.on('video:waiting', () => {
+                // Show pause icon when video is buffering/loading
+                if (playPauseButton) {
+                    playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
+                }
+            });
+            
+            art.on('video:canplay', () => {
+                // Restore correct state when video can play again
+                if (art.playing) {
+                    if (playPauseButton) {
+                        playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                    }
+                }
             });
             art.on('control', state => {
                 if (lockLayer.style.display === 'flex') return;
