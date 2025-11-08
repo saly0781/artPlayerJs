@@ -1602,7 +1602,7 @@ async function initializeApp(optionData) {
             moreVideoAttr: { "webkit-playsinline": true },
             layers: [
                 {
-                    name: 'topControls', html: mainTopControlsContainer, style: { position: 'absolute', width: '100%', height: 'auto', pointerEvents: 'none' },
+                    name: 'topControls', html: mainTopControlsContainer, style: { position: 'absolute', width: '100%', height: 'auto', pointerEvents: 'auto' },
                     mounted: function (...args) {
                         const backButton = args[0].querySelector('#backButton');
                         backButton.onclick = () => {
