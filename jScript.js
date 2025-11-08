@@ -557,53 +557,53 @@ function injectComponentStyles() {
                             line-height: 1.2;
                         }
                          .volume-control-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.volume-slider-container {
-    position: absolute;
-    right: 100%;
-    top: 50%;
-    transform: translateY(-50%);
-    margin-right: 10px;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
-}
-
-.volume-control-wrapper:hover .volume-slider-container {
-    opacity: 1;
-    visibility: visible;
-}
-
-.volume-slider {
-    width: 80px;
-    height: 4px;
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 2px;
-    outline: none;
-    -webkit-appearance: none;
-}
-
-.volume-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #fff;
-    cursor: pointer;
-}
-
-.volume-slider::-moz-range-thumb {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #fff;
-    cursor: pointer;
-    border: none;
-}   
+                            position: relative;
+                            display: flex;
+                            align-items: center;
+                        }
+                        
+                        .volume-slider-container {
+                            position: absolute;
+                            right: 100%;
+                            top: 50%;
+                            transform: translateY(-50%);
+                            margin-right: 10px;
+                            opacity: 0;
+                            visibility: hidden;
+                            transition: opacity 0.3s ease, visibility 0.3s ease;
+                        }
+                        
+                        .volume-control-wrapper:hover .volume-slider-container {
+                            opacity: 1;
+                            visibility: visible;
+                        }
+                        
+                        .volume-slider {
+                            width: 80px;
+                            height: 4px;
+                            background: rgba(255, 255, 255, 0.3);
+                            border-radius: 2px;
+                            outline: none;
+                            -webkit-appearance: none;
+                        }
+                        
+                        .volume-slider::-webkit-slider-thumb {
+                            -webkit-appearance: none;
+                            width: 12px;
+                            height: 12px;
+                            border-radius: 50%;
+                            background: #fff;
+                            cursor: pointer;
+                        }
+                        
+                        .volume-slider::-moz-range-thumb {
+                            width: 12px;
+                            height: 12px;
+                            border-radius: 50%;
+                            background: #fff;
+                            cursor: pointer;
+                            border: none;
+                        }   
                         .quality-label { font-size: 13px; }
                         .quality-size { font-size: 10px; opacity: 0.7; }
                         .segment-button.active {
@@ -639,7 +639,51 @@ function injectComponentStyles() {
     styleElement.appendChild(document.createTextNode(cssRules));
     document.head.appendChild(styleElement);
 }
+
 injectComponentStyles();
+function injectProgressBarStyles() {
+    const cssRules = `
+        /* Progress Bar Styles */
+        .art-control-progress-inner {
+            background: #ffffff !important;
+        }
+        
+        .art-control-progress, 
+        .art-control.art-control-progress {
+            cursor: pointer !important;
+        }
+        
+        .art-control-progress:hover .art-control-progress-inner::before {
+            opacity: 1 !important;
+            transform: scale(1) !important;
+        }
+        
+        .art-control-progress-inner::before {
+            width: 12px !important;
+            height: 12px !important;
+            border-radius: 50% !important;
+            background: #ffffff !important;
+            opacity: 0 !important;
+            transform: scale(0) !important;
+            transition: opacity 0.2s ease, transform 0.2s ease !important;
+        }
+        
+        /* Make the entire progress bar area more clickable */
+        .art-control.art-control-progress {
+            padding: 8px 0 !important;
+            margin: -8px 0 !important;
+        }
+    `;
+    
+    const styleElement = document.createElement('style');
+    styleElement.id = 'progress-bar-styles';
+    styleElement.type = 'text/css';
+    styleElement.appendChild(document.createTextNode(cssRules));
+    document.head.appendChild(styleElement);
+}
+
+// Call this function after your other style injections
+injectProgressBarStyles();
 function injectPlaybackStyles() {
     const cssRules = `
                         @keyframes rotate-360 { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
