@@ -2348,11 +2348,11 @@ async function initializeApp(optionData) {
             const showAdCountdownAndPlayAd = (adType, adUrl) => {
                 //console.log(`Showing countdown for ${adType}`);
                 exitFullscreenIfNeeded();
-
+            
                 // Set the pending ad type and current region
                 pendingAdType = adType;
                 currentAdRegion = adType;
-
+            
                 if (art.duration < 600) {
                     // Play the ad after countdown
                     if (adPlugin) {
@@ -2371,74 +2371,74 @@ async function initializeApp(optionData) {
                     }
                     return;
                 }
-
-                if (!actionButtonsContainer) return;
-
+            
                 let countdownValue = 10; // 10 seconds countdown
-
+            
                 // === CHANGE 1: Show the persistent overlay ===
                 const adCountdownLayer = art.layers.adCountdown;
                 const adCountdownOverlay = adCountdownLayer.querySelector('#adCountdownOverlay');
                 const persistentCountdownText = adCountdownLayer.querySelector('#persistentCountdownText');
-
+            
                 if (adCountdownOverlay) {
                     adCountdownOverlay.style.display = 'flex';
                     art.layers.adCountdown.style.display = 'block';
                 }
                 // === END CHANGE 1 ===
-
-                const wrapper = document.createElement('div');
-                wrapper.id = `ad-countdown-${adType}`;
-                wrapper.className = 'action-button-wrapper';
-                wrapper.style.width = '100%';
-
-                const button = document.createElement('button');
-                button.className = 'dynamic-action-button';
-                button.disabled = true;
-                button.style.opacity = '0.6';
-                button.style.cursor = 'not-allowed';
-
-                // === CHANGE 2: Update both locations instead of just one ===
-                const updateAllCountdowns = () => {
+            
+                // === REMOVE THE ACTION BUTTON CREATION - JUST CLEAR IT ===
+                if (actionButtonsContainer) {
+                    actionButtonsContainer.innerHTML = ''; // Clear any existing buttons
+                }
+                // Remove all this action button creation code:
+                // const wrapper = document.createElement('div');
+                // wrapper.id = `ad-countdown-${adType}`;
+                // wrapper.className = 'action-button-wrapper';
+                // wrapper.style.width = '100%';
+                // const button = document.createElement('button');
+                // button.className = 'dynamic-action-button';
+                // button.disabled = true;
+                // button.style.opacity = '0.6';
+                // button.style.cursor = 'not-allowed';
+                // wrapper.appendChild(button);
+                // actionButtonsContainer.innerHTML = '';
+                // actionButtonsContainer.appendChild(wrapper);
+            
+                // === CHANGE 2: Update ONLY the persistent overlay ===
+                const updateCountdown = () => {
                     const minutes = Math.floor(countdownValue / 60);
                     const seconds = countdownValue % 60;
                     const countdownText = `${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-                    // Update original action button
-                    button.innerHTML = countdownText;
-
-                    // Update persistent overlay
+            
+                    // Update ONLY the persistent overlay (remove the action button update)
                     if (persistentCountdownText) {
                         persistentCountdownText.textContent = countdownText;
                     }
                 };
                 // === END CHANGE 2 ===
-
-                updateAllCountdowns(); // Changed from updateButtonText()
-                wrapper.appendChild(button);
-                actionButtonsContainer.innerHTML = '';
-                actionButtonsContainer.appendChild(wrapper);
-
+            
+                updateCountdown(); // Changed from updateAllCountdowns()
+            
                 window.adCountdownInterval = setInterval(() => {
                     countdownValue--;
-                    updateAllCountdowns(); // Changed from updateButtonText()
-
+                    updateCountdown(); // Changed from updateAllCountdowns()
+            
                     if (countdownValue <= 0) {
                         clearInterval(window.adCountdownInterval);
                         window.adCountdownInterval = null;
-
+            
                         // === CHANGE 3: Hide the persistent overlay when countdown ends ===
                         if (adCountdownOverlay) {
                             adCountdownOverlay.style.display = 'none';
                             art.layers.adCountdown.style.display = 'none';
                         }
                         // === END CHANGE 3 ===
-
+            
+                        // === REMOVE the action button cleanup ===
                         // Remove countdown button
-                        if (wrapper.parentNode === actionButtonsContainer) {
-                            actionButtonsContainer.removeChild(wrapper);
-                        }
-
+                        // if (wrapper.parentNode === actionButtonsContainer) {
+                        //     actionButtonsContainer.removeChild(wrapper);
+                        // }
+            
                         // Play the ad after countdown
                         if (adPlugin && pendingAdType === adType) { // Only play if this is still the pending ad
                             //console.log(`Countdown finished, playing ${adType}`);
@@ -2451,7 +2451,7 @@ async function initializeApp(optionData) {
                                 adPlugin.updateVideoLink(adUrl, duration, duration);
                             }
                         }
-
+            
                         // Clear pending states
                         pendingAdType = null;
                         currentAdRegion = null;
