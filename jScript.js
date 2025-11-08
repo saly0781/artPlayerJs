@@ -557,7 +557,7 @@ function injectComponentStyles() {
                             line-height: 1.2;
                         }
                          .volume-control-wrapper {
-                             position: relative;
+                            position: relative;
                             display: flex;
                             align-items: center;
                         }
@@ -565,7 +565,7 @@ function injectComponentStyles() {
                         .volume-slider-container {
                             position: absolute;
                             right: 100%;
-                            top: 50%;
+                                                  top: 50%;
                             transform: translateY(-50%);
                             margin-right: 10px;
                             opacity: 0;
@@ -581,10 +581,35 @@ function injectComponentStyles() {
                         .volume-slider {
                             width: 80px;
                             height: 4px;
-                            background: rgba(255, 255, 255, 0.3);
                             border-radius: 2px;
                             outline: none;
                             -webkit-appearance: none;
+                            cursor: pointer; /* Shows pointer on entire slider */
+                        }
+                        
+                        /* Webkit (Chrome, Safari, Edge) - Filled track */
+                        .volume-slider::-webkit-slider-runnable-track {
+                            width: 100%;
+                            height: 4px;
+                            background: rgba(255, 255, 255, 0.3);
+                            border-radius: 2px;
+                            cursor: pointer;
+                        }
+                        
+                        /* Firefox - Filled track */
+                        .volume-slider::-moz-range-track {
+                            width: 100%;
+                                                  height: 4px;
+                            background: rgba(255, 255, 255, 0.3);
+                            border-radius: 2px;
+                            cursor: pointer;
+                        }
+                        
+                        /* Firefox - Progress (filled portion) */
+                        .volume-slider::-moz-range-progress {
+                            height: 4px;
+                            background: #fff; /* White filled portion */
+                            border-radius: 2px;
                         }
                         
                         .volume-slider::-webkit-slider-thumb {
@@ -593,7 +618,8 @@ function injectComponentStyles() {
                             height: 12px;
                             border-radius: 50%;
                             background: #fff;
-                            cursor: pointer;
+                            cursor: pointer; /* Pointer on thumb */
+                            margin-top: -4px; /* Centers the thumb vertically */
                         }
                         
                         .volume-slider::-moz-range-thumb {
@@ -603,7 +629,7 @@ function injectComponentStyles() {
                             background: #fff;
                             cursor: pointer;
                             border: none;
-                        }  
+                        } 
                         .quality-label { font-size: 13px; }
                         .quality-size { font-size: 10px; opacity: 0.7; }
                         .segment-button.active {
@@ -2637,325 +2663,327 @@ async function initializeApp(optionData) {
                 const volumeSlider = document.querySelector('#volumeSlider');
                 const volumeOnIconPath = "M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z";
                 const volumeOffIconPath = "M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z";
-                
+
                 // Mute/unmute on button click
-                volumeButton.addEventListener('click', () => { 
+                volumeButton.addEventListener('click', () => {
                     art.muted = !art.muted;
                     const isMuted = art.muted;
                     volumeIconPathEl.setAttribute('d', isMuted ? volumeOffIconPath : volumeOnIconPath);
                 });
-                
+
                 // Volume slider functionality
                 if (volumeSlider) {
+                    // Function to update the slider fill
+                    const updateSliderFill = () => {
+                        const value = volumeSlider.value;
+                        const percentage = (value / volumeSlider.max) * 100;
+                        volumeSlider.style.background = `linear-gradient(to right, #fff 0%, #fff ${percentage}%, rgba(255, 255, 255, 0.3) ${percentage}%, rgba(255, 255, 255, 0.3) 100%)`;
+                    };
+
                     volumeSlider.addEventListener('input', (e) => {
                         const newVolume = parseFloat(e.target.value);
                         art.volume = newVolume;
-                        
+
+                        // Update slider fill
+                        updateSliderFill();
+
                         // Unmute if volume is increased from 0
                         if (newVolume > 0 && art.muted) {
                             art.muted = false;
                         }
-                        
+
                         // Update icon immediately
                         const isMuted = art.muted || newVolume === 0;
                         volumeIconPathEl.setAttribute('d', isMuted ? volumeOffIconPath : volumeOnIconPath);
                     });
-                    
-                    // Sync slider with artplayer volume changes
-                    art.on('volume', (v) => {
-                        volumeSlider.value = v;
-                        const isMuted = art.muted || v === 0;
+
+                    // Set initial state
+                    setTimeout(() => {
+                        const isMuted = art.muted || art.volume === 0;
                         volumeIconPathEl.setAttribute('d', isMuted ? volumeOffIconPath : volumeOnIconPath);
-                    });
+                        if (volumeSlider) {
+                            volumeSlider.value = art.volume;
+                        }
+                    }, 1000);
                 }
-                
-                // Set initial state
-                setTimeout(() => {
-                    const isMuted = art.muted || art.volume === 0;
-                    volumeIconPathEl.setAttribute('d', isMuted ? volumeOffIconPath : volumeOnIconPath);
-                    if (volumeSlider) {
-                        volumeSlider.value = art.volume;
-                    }
-                }, 1000);
-            }
-            if (qualityControlContainer) {
-                qualityControlContainer.querySelectorAll('.segment-button').forEach(button => {
-                    button.addEventListener('click', () => {
-                        if (button.classList.contains('disabled') || button.classList.contains('active')) return;
-                        const chosenQuality = button.dataset.value; // Quality the user explicitly chose
-                        // --- Use Original URL directly from currentMovieData ---
-                        // determinePlaybackQualityAndUrl now uses Original URLs if they were set
-                        // and sets the global videoType
-                        const switchPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, chosenQuality);
-                        if (switchPlaybackInfo) {
-                            const newOriginalUrl = switchPlaybackInfo.url; // This should be the Original URL
-                            const qualityForLogging = switchPlaybackInfo.quality;
-                            // Show loading indicator if Artplayer has one (optional)
-                            // if (art.loading) art.loading.show = true;
-                            // Use the original URL directly
-                            // Pass the determined videoType to switchQuality if Artplayer's switchQuality respects it,
-                            // or rely on the global videoType being set.
-                            art.switchQuality(newOriginalUrl, currentMovieData.title).then(() => {
-                                // if (art.loading) art.loading.show = false; // Hide loading indicator
-                                activeQuality = qualityForLogging; // Update the playback quality tracker
-                                saveUserQualityPreference(chosenQuality); // *** SAVE USER CHOICE ***
-                                updateUIForNewEpisode(); // This will update the active button based on `activeQuality`
-                                // Ensure videoType is set correctly (it should be by determinePlaybackQualityAndUrl)
-                                // art.type = videoType; // Might be needed if Artplayer doesn't automatically use the global type after switchQuality
-                                // Or re-initialize player if type change isn't handled well by switchQuality
-                            }).catch(err => {
-                                // if (art.loading) art.loading.show = false; // Hide loading indicator
-                                console.error("Failed to switch quality (using Original URL):", err);
-                                art.notice.show = `Failed to switch to ${chosenQuality.toUpperCase()} quality.`;
-                            });
-                        } else {
-                            // Check the specific URL that failed
-                            const specificUrl = currentMovieData.video[`${chosenQuality}Video`];
-                            if (!specificUrl || specificUrl.includes('not found')) {
-                                art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
+                if (qualityControlContainer) {
+                    qualityControlContainer.querySelectorAll('.segment-button').forEach(button => {
+                        button.addEventListener('click', () => {
+                            if (button.classList.contains('disabled') || button.classList.contains('active')) return;
+                            const chosenQuality = button.dataset.value; // Quality the user explicitly chose
+                            // --- Use Original URL directly from currentMovieData ---
+                            // determinePlaybackQualityAndUrl now uses Original URLs if they were set
+                            // and sets the global videoType
+                            const switchPlaybackInfo = determinePlaybackQualityAndUrl(currentMovieData, chosenQuality);
+                            if (switchPlaybackInfo) {
+                                const newOriginalUrl = switchPlaybackInfo.url; // This should be the Original URL
+                                const qualityForLogging = switchPlaybackInfo.quality;
+                                // Show loading indicator if Artplayer has one (optional)
+                                // if (art.loading) art.loading.show = true;
+                                // Use the original URL directly
+                                // Pass the determined videoType to switchQuality if Artplayer's switchQuality respects it,
+                                // or rely on the global videoType being set.
+                                art.switchQuality(newOriginalUrl, currentMovieData.title).then(() => {
+                                    // if (art.loading) art.loading.show = false; // Hide loading indicator
+                                    activeQuality = qualityForLogging; // Update the playback quality tracker
+                                    saveUserQualityPreference(chosenQuality); // *** SAVE USER CHOICE ***
+                                    updateUIForNewEpisode(); // This will update the active button based on `activeQuality`
+                                    // Ensure videoType is set correctly (it should be by determinePlaybackQualityAndUrl)
+                                    // art.type = videoType; // Might be needed if Artplayer doesn't automatically use the global type after switchQuality
+                                    // Or re-initialize player if type change isn't handled well by switchQuality
+                                }).catch(err => {
+                                    // if (art.loading) art.loading.show = false; // Hide loading indicator
+                                    console.error("Failed to switch quality (using Original URL):", err);
+                                    art.notice.show = `Failed to switch to ${chosenQuality.toUpperCase()} quality.`;
+                                });
                             } else {
-                                art.notice.show = `Error preparing ${chosenQuality.toUpperCase()} quality.`;
-                            }
-                        }
-                        // --- End Use Original URL ---
-                    });
-                });
-            }
-            // --- ArtPlayer Event Hooks ---
-            const syncPlayPauseButton = () => {
-                if (!playPauseButton) return;
-
-                const path = playPauseButton.querySelector('svg path');
-                if (art.playing) {
-                    path.setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
-                } else {
-                    path.setAttribute('d', "M8 5v14l11-7z");
-                }
-            };
-            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-                // Listen for fullscreen changes and ALWAYS show pause icon
-                document.addEventListener('webkitfullscreenchange', () => {
-                    if (playPauseButton) {
-                        playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
-                    }
-                });
-
-                document.addEventListener('fullscreenchange', () => {
-                    if (playPauseButton) {
-                        playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
-                    }
-                });
-            }
-
-            // Use this function in all events
-            art.on('play', syncPlayPauseButton);
-            art.on('pause', syncPlayPauseButton);
-            art.on('fullscreen', syncPlayPauseButton);
-            art.on('resize', syncPlayPauseButton);
-            art.on('video:seeked', syncPlayPauseButton);
-            art.on('video:canplay', syncPlayPauseButton);
-
-            // Also call it initially
-            setTimeout(syncPlayPauseButton, 1000);
-            art.on('control', state => {
-                if (lockLayer.style.display === 'flex') return;
-                mainControlsContainer.classList.toggle('hidden', !state);
-                playbackControlsContainer.classList.toggle('hidden', !state);
-                bottomLeftInfo.classList.toggle('hidden', !state);
-                moreEpisodesContainer.classList.toggle('hidden', !state);
-                if (state) {
-                    if (artBottom) window.innerWidth >= 750 ? artBottom.style.padding = '30px 50px 30px' : artBottom.style.padding = '10px 20px 10px';
-                } else {
-                    if (artBottom) artBottom.style.padding = '0px 0px 0px'; // Adjust padding when controls are hidden
-                }
-            });
-            art.on('fullscreen', (isFull) => {
-                if (fullscreenButton) {
-                    const fsIcon = fullscreenButton.querySelector('svg path');
-                    const enterFsIcon = "M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z";
-                    const exitFsIcon = "M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z";
-                    fsIcon.setAttribute('d', isFull ? exitFsIcon : enterFsIcon);
-                }
-            });
-            let lastSaveTime = 0;
-            let movieRemoved = false;
-            art.on('video:timeupdate', () => {
-                if (lockOverlayShown_ || isAdPlaying) {
-                    art.pause(); // Pause the video if lock overlay is shown
-                    exitFullscreenIfNeeded(); // Exit fullscreen if needed
-                    lastCurrentTime = art.currentTime;
-                    return; // Exit early to prevent further processing    
-                }
-                if (videoPlayedOnce === false) {
-                    videoPlayedOnce = true; // Set the flag to true after the first play
-                    if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
-                }
-                const currentPlayTime = art.currentTime;
-                // Only calculate and add time if the video is actually playing
-                if (art.playing) {
-                    if (lastCurrentTime >= 0) { // Ensure lastCurrentTime is initialized
-                        let deltaTime = currentPlayTime - lastCurrentTime;
-                        const expectedMaxDelta = 0.5; // Adjust tolerance as needed
-                        if (deltaTime > expectedMaxDelta) {
-                            // console.log("Large time jump detected (seek?), ignoring for watch time.");
-                            deltaTime = 0; // Don't add this large jump to watch time
-                            // Alternatively, you could just not add deltaTime if it's > expectedMaxDelta
-                            // but setting to 0 is clearer intent.
-                        } else if (deltaTime < 0) {
-                            // Handle backwards seeks or playback resets (e.g., replay)
-                            // Simply don't add negative time. accumulatedWatchTime only increases.
-                            deltaTime = Math.max(0, deltaTime); // Ensure non-negative
-                        }
-                        // --- End Optional Robustness ---
-
-                        // Add the calculated (and potentially adjusted) deltaTime to the total
-                        accumulatedWatchTime += deltaTime;
-                    }
-                }
-                // Always update the last known time for the next comparison
-                lastCurrentTime = currentPlayTime;
-
-                // Check if the accumulated watch time has crossed the 10-minute (600 second) threshold
-                // and if we haven't recorded the view yet for this playback instance.
-                if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) {
-                    tenMinuteViewRecorded = true;
-                    fetch("https://api.rebamovie.com/updateAnalytics", {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            "databaseName": currentMovieData.type == "S" ? "Season" + (Number(currentMovieData.position.seasonIndex) + 1) : "Items",
-                            "_id": currentMovieData.episodeId,
-                            "activity": "view",
-                            "movieId": currentMovieData.movieId
-
-                        })
-                    });
-                }
-                if (currentMovieData.locked == true && !lockOverlayShown_ && currentMovieData.type == 'S') {
-                    showLockOverlay();
-                }
-                let percentage = (art.currentTime / art.duration) * 100;
-                if (percentage > 50 && currentMovieData.type == 'M' && currentMovieData.locked == true) {
-                    art.pause();
-                    if (lockOverlayShown_ == false) {
-                        showLockOverlay();
-                    }
-                }
-                if (currentTimeDisplay) currentTimeDisplay.innerHTML = formatTime(art.currentTime);
-                if (totalTimeDisplay && art.duration) totalTimeDisplay.innerHTML = formatTime(art.duration);
-                const currentTime = Date.now();
-                if (currentTime - lastSaveTime > 7000) {
-                    if (art.duration > 0) {
-                        currentMovieData.continueWatching.inMinutes = Math.trunc(art.currentTime);
-                        currentMovieData.continueWatching.inPercentage = Math.round((art.currentTime / art.duration) * 100);
-                        saveEpisodeProgress(currentMovieData);
-                        lastSaveTime = currentTime;
-                    }
-                }
-                if (!currentMovieData.isSeason && !movieRemoved && art.duration > 0 && (art.currentTime / art.duration) >= 0.8) {
-                    removeEpisodeProgress(currentMovieData.movieId);
-                    movieRemoved = true;
-                }
-                const skipBtn = actionButtonsContainer.querySelector('#skipIntroBtn');
-                const introEndTime = parseInt(currentMovieData.time.startTime, 10);
-                if (skipBtn && introEndTime && art.currentTime > introEndTime) animateAndRemove(skipBtn);
-                const continueContainer = actionButtonsContainer.querySelector('#continueWatchingContainer');
-                const continueTime = currentMovieData.continueWatching.inMinutes;
-                if (continueContainer && continueTime && art.currentTime > continueTime + 10) animateAndRemove(continueContainer);
-                // --- Add this new logic for endTime and video ended ---
-                // Flag to track if the next episode card has been shown for this playback
-                if (typeof window.nextEpisodeCardShown === 'undefined') {
-                    window.nextEpisodeCardShown = false;
-                }
-                // Check for endTime to show Next Episode card (only for series)
-                const endTime = parseInt(currentMovieData.time?.endTime, 10);
-                if (!isNaN(endTime) && art.currentTime >= endTime && !window.nextEpisodeCardShown && apiData.isSeason) {
-                    //console.log("Reached endTime, showing next episode card.");
-                    updateNextEpisodeCard(true); // Show the next episode card with countdown
-                    window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
-                }
-
-                // --- Ad Triggering Logic ---
-                if (currentMovieData.adstatus === true && !isAdPlaying) {
-                    console.log("Ad triggering logic activated.", currentMovieData.adstatus, isAdPlaying);
-                    const percentage = (art.currentTime / art.duration) * 100;
-                    const newAdRegion = getCurrentAdRegion(percentage);
-
-                    // Check if we've moved to a different ad region during countdown
-                    if (pendingAdType && currentAdRegion && newAdRegion !== currentAdRegion) {
-                        //console.log(`Detected seek from ${currentAdRegion} to ${newAdRegion} during countdown`);
-
-                        // Determine which ad to show in the new region
-                        let newAdType = null;
-                        let newAdUrl = null;
-                        let shouldTrigger = false;
-
-                        if (newAdRegion === 'preLoll' && !preAdShown) {
-                            newAdType = 'preLoll';
-                            newAdUrl = allLolls[0];
-                            shouldTrigger = true;
-                        } else if (newAdRegion === 'midLoll' && !midAdShown) {
-                            newAdType = 'midLoll';
-                            newAdUrl = allLolls[1];
-                            shouldTrigger = true;
-                        } else if (newAdRegion === 'postLoll' && !postAdShown) {
-                            newAdType = 'postLoll';
-                            newAdUrl = allLolls[2];
-                            shouldTrigger = true;
-                        }
-
-                        if (shouldTrigger) {
-                            cancelCurrentCountdownAndStartNew(newAdType, newAdUrl);
-                        } else {
-                            // Clear countdown if moved to a region where ad was already shown or outside ad regions
-                            if (window.adCountdownInterval) {
-                                clearInterval(window.adCountdownInterval);
-                                window.adCountdownInterval = null;
-                            }
-                            if (actionButtonsContainer) {
-                                const existingCountdown = actionButtonsContainer.querySelector(`[id^="ad-countdown-"]`);
-                                if (existingCountdown) {
-                                    existingCountdown.remove();
+                                // Check the specific URL that failed
+                                const specificUrl = currentMovieData.video[`${chosenQuality}Video`];
+                                if (!specificUrl || specificUrl.includes('not found')) {
+                                    art.notice.show = `Quality ${chosenQuality.toUpperCase()} is not available for this content.`;
+                                } else {
+                                    art.notice.show = `Error preparing ${chosenQuality.toUpperCase()} quality.`;
                                 }
                             }
-                            pendingAdType = null;
-                            currentAdRegion = null;
+                            // --- End Use Original URL ---
+                        });
+                    });
+                }
+                // --- ArtPlayer Event Hooks ---
+                const syncPlayPauseButton = () => {
+                    if (!playPauseButton) return;
+
+                    const path = playPauseButton.querySelector('svg path');
+                    if (art.playing) {
+                        path.setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                    } else {
+                        path.setAttribute('d', "M8 5v14l11-7z");
+                    }
+                };
+                if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                    // Listen for fullscreen changes and ALWAYS show pause icon
+                    document.addEventListener('webkitfullscreenchange', () => {
+                        if (playPauseButton) {
+                            playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                        }
+                    });
+
+                    document.addEventListener('fullscreenchange', () => {
+                        if (playPauseButton) {
+                            playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                        }
+                    });
+                }
+
+                // Use this function in all events
+                art.on('play', syncPlayPauseButton);
+                art.on('pause', syncPlayPauseButton);
+                art.on('fullscreen', syncPlayPauseButton);
+                art.on('resize', syncPlayPauseButton);
+                art.on('video:seeked', syncPlayPauseButton);
+                art.on('video:canplay', syncPlayPauseButton);
+
+                // Also call it initially
+                setTimeout(syncPlayPauseButton, 1000);
+                art.on('control', state => {
+                    if (lockLayer.style.display === 'flex') return;
+                    mainControlsContainer.classList.toggle('hidden', !state);
+                    playbackControlsContainer.classList.toggle('hidden', !state);
+                    bottomLeftInfo.classList.toggle('hidden', !state);
+                    moreEpisodesContainer.classList.toggle('hidden', !state);
+                    if (state) {
+                        if (artBottom) window.innerWidth >= 750 ? artBottom.style.padding = '30px 50px 30px' : artBottom.style.padding = '10px 20px 10px';
+                    } else {
+                        if (artBottom) artBottom.style.padding = '0px 0px 0px'; // Adjust padding when controls are hidden
+                    }
+                });
+                art.on('fullscreen', (isFull) => {
+                    if (fullscreenButton) {
+                        const fsIcon = fullscreenButton.querySelector('svg path');
+                        const enterFsIcon = "M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z";
+                        const exitFsIcon = "M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z";
+                        fsIcon.setAttribute('d', isFull ? exitFsIcon : enterFsIcon);
+                    }
+                });
+                let lastSaveTime = 0;
+                let movieRemoved = false;
+                art.on('video:timeupdate', () => {
+                    if (lockOverlayShown_ || isAdPlaying) {
+                        art.pause(); // Pause the video if lock overlay is shown
+                        exitFullscreenIfNeeded(); // Exit fullscreen if needed
+                        lastCurrentTime = art.currentTime;
+                        return; // Exit early to prevent further processing    
+                    }
+                    if (videoPlayedOnce === false) {
+                        videoPlayedOnce = true; // Set the flag to true after the first play
+                        if (playPauseButton) playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
+                    }
+                    const currentPlayTime = art.currentTime;
+                    // Only calculate and add time if the video is actually playing
+                    if (art.playing) {
+                        if (lastCurrentTime >= 0) { // Ensure lastCurrentTime is initialized
+                            let deltaTime = currentPlayTime - lastCurrentTime;
+                            const expectedMaxDelta = 0.5; // Adjust tolerance as needed
+                            if (deltaTime > expectedMaxDelta) {
+                                // console.log("Large time jump detected (seek?), ignoring for watch time.");
+                                deltaTime = 0; // Don't add this large jump to watch time
+                                // Alternatively, you could just not add deltaTime if it's > expectedMaxDelta
+                                // but setting to 0 is clearer intent.
+                            } else if (deltaTime < 0) {
+                                // Handle backwards seeks or playback resets (e.g., replay)
+                                // Simply don't add negative time. accumulatedWatchTime only increases.
+                                deltaTime = Math.max(0, deltaTime); // Ensure non-negative
+                            }
+                            // --- End Optional Robustness ---
+
+                            // Add the calculated (and potentially adjusted) deltaTime to the total
+                            accumulatedWatchTime += deltaTime;
                         }
                     }
-                    // Original ad triggering logic (only if no countdown is in progress)
-                    else if (!pendingAdType) {
-                        if (percentage >= 19 && percentage < 49 && !preAdShown) {
-                            //console.log("Triggering preLoll ad check");
-                            showAdCountdownAndPlayAd('preLoll', allLolls[0]);
-                            preAdShown = true;
-                        } else if (percentage >= 55 && percentage <= 75 && !midAdShown) {
-                            //console.log("Triggering midLoll ad check");
-                            showAdCountdownAndPlayAd('midLoll', allLolls[1]);
-                            midAdShown = true;
-                        } else if (percentage >= 81 && percentage <= 100 && !postAdShown) {
-                            //console.log("Triggering postLoll ad check");
-                            showAdCountdownAndPlayAd('postLoll', allLolls[2]);
-                            postAdShown = true;
+                    // Always update the last known time for the next comparison
+                    lastCurrentTime = currentPlayTime;
+
+                    // Check if the accumulated watch time has crossed the 10-minute (600 second) threshold
+                    // and if we haven't recorded the view yet for this playback instance.
+                    if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) {
+                        tenMinuteViewRecorded = true;
+                        fetch("https://api.rebamovie.com/updateAnalytics", {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                "databaseName": currentMovieData.type == "S" ? "Season" + (Number(currentMovieData.position.seasonIndex) + 1) : "Items",
+                                "_id": currentMovieData.episodeId,
+                                "activity": "view",
+                                "movieId": currentMovieData.movieId
+
+                            })
+                        });
+                    }
+                    if (currentMovieData.locked == true && !lockOverlayShown_ && currentMovieData.type == 'S') {
+                        showLockOverlay();
+                    }
+                    let percentage = (art.currentTime / art.duration) * 100;
+                    if (percentage > 50 && currentMovieData.type == 'M' && currentMovieData.locked == true) {
+                        art.pause();
+                        if (lockOverlayShown_ == false) {
+                            showLockOverlay();
                         }
                     }
-                }
-                // --- End Ad Triggering Logic ---
+                    if (currentTimeDisplay) currentTimeDisplay.innerHTML = formatTime(art.currentTime);
+                    if (totalTimeDisplay && art.duration) totalTimeDisplay.innerHTML = formatTime(art.duration);
+                    const currentTime = Date.now();
+                    if (currentTime - lastSaveTime > 7000) {
+                        if (art.duration > 0) {
+                            currentMovieData.continueWatching.inMinutes = Math.trunc(art.currentTime);
+                            currentMovieData.continueWatching.inPercentage = Math.round((art.currentTime / art.duration) * 100);
+                            saveEpisodeProgress(currentMovieData);
+                            lastSaveTime = currentTime;
+                        }
+                    }
+                    if (!currentMovieData.isSeason && !movieRemoved && art.duration > 0 && (art.currentTime / art.duration) >= 0.8) {
+                        removeEpisodeProgress(currentMovieData.movieId);
+                        movieRemoved = true;
+                    }
+                    const skipBtn = actionButtonsContainer.querySelector('#skipIntroBtn');
+                    const introEndTime = parseInt(currentMovieData.time.startTime, 10);
+                    if (skipBtn && introEndTime && art.currentTime > introEndTime) animateAndRemove(skipBtn);
+                    const continueContainer = actionButtonsContainer.querySelector('#continueWatchingContainer');
+                    const continueTime = currentMovieData.continueWatching.inMinutes;
+                    if (continueContainer && continueTime && art.currentTime > continueTime + 10) animateAndRemove(continueContainer);
+                    // --- Add this new logic for endTime and video ended ---
+                    // Flag to track if the next episode card has been shown for this playback
+                    if (typeof window.nextEpisodeCardShown === 'undefined') {
+                        window.nextEpisodeCardShown = false;
+                    }
+                    // Check for endTime to show Next Episode card (only for series)
+                    const endTime = parseInt(currentMovieData.time?.endTime, 10);
+                    if (!isNaN(endTime) && art.currentTime >= endTime && !window.nextEpisodeCardShown && apiData.isSeason) {
+                        //console.log("Reached endTime, showing next episode card.");
+                        updateNextEpisodeCard(true); // Show the next episode card with countdown
+                        window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
+                    }
+
+                    // --- Ad Triggering Logic ---
+                    if (currentMovieData.adstatus === true && !isAdPlaying) {
+                        console.log("Ad triggering logic activated.", currentMovieData.adstatus, isAdPlaying);
+                        const percentage = (art.currentTime / art.duration) * 100;
+                        const newAdRegion = getCurrentAdRegion(percentage);
+
+                        // Check if we've moved to a different ad region during countdown
+                        if (pendingAdType && currentAdRegion && newAdRegion !== currentAdRegion) {
+                            //console.log(`Detected seek from ${currentAdRegion} to ${newAdRegion} during countdown`);
+
+                            // Determine which ad to show in the new region
+                            let newAdType = null;
+                            let newAdUrl = null;
+                            let shouldTrigger = false;
+
+                            if (newAdRegion === 'preLoll' && !preAdShown) {
+                                newAdType = 'preLoll';
+                                newAdUrl = allLolls[0];
+                                shouldTrigger = true;
+                            } else if (newAdRegion === 'midLoll' && !midAdShown) {
+                                newAdType = 'midLoll';
+                                newAdUrl = allLolls[1];
+                                shouldTrigger = true;
+                            } else if (newAdRegion === 'postLoll' && !postAdShown) {
+                                newAdType = 'postLoll';
+                                newAdUrl = allLolls[2];
+                                shouldTrigger = true;
+                            }
+
+                            if (shouldTrigger) {
+                                cancelCurrentCountdownAndStartNew(newAdType, newAdUrl);
+                            } else {
+                                // Clear countdown if moved to a region where ad was already shown or outside ad regions
+                                if (window.adCountdownInterval) {
+                                    clearInterval(window.adCountdownInterval);
+                                    window.adCountdownInterval = null;
+                                }
+                                if (actionButtonsContainer) {
+                                    const existingCountdown = actionButtonsContainer.querySelector(`[id^="ad-countdown-"]`);
+                                    if (existingCountdown) {
+                                        existingCountdown.remove();
+                                    }
+                                }
+                                pendingAdType = null;
+                                currentAdRegion = null;
+                            }
+                        }
+                        // Original ad triggering logic (only if no countdown is in progress)
+                        else if (!pendingAdType) {
+                            if (percentage >= 19 && percentage < 49 && !preAdShown) {
+                                //console.log("Triggering preLoll ad check");
+                                showAdCountdownAndPlayAd('preLoll', allLolls[0]);
+                                preAdShown = true;
+                            } else if (percentage >= 55 && percentage <= 75 && !midAdShown) {
+                                //console.log("Triggering midLoll ad check");
+                                showAdCountdownAndPlayAd('midLoll', allLolls[1]);
+                                midAdShown = true;
+                            } else if (percentage >= 81 && percentage <= 100 && !postAdShown) {
+                                //console.log("Triggering postLoll ad check");
+                                showAdCountdownAndPlayAd('postLoll', allLolls[2]);
+                                postAdShown = true;
+                            }
+                        }
+                    }
+                    // --- End Ad Triggering Logic ---
+                });
+                // --- Add this block for handling video end ---
+                // This will trigger if there's no endTime or if the user watches past the endTime
+                art.on('video:ended', () => {
+                    // console.log("Video ended.");
+                    // --- Handle postLoll on video end ---
+                    if (currentMovieData.adstatus === true && !postAdShown && !isAdPlaying) {
+                        // console.log("Video ended, triggering postLoll ad");
+                        showAdCountdownAndPlayAd('postLoll', allLolls[2]);
+                        postAdShown = true;
+                    }
+                    // --- End postLoll Handling ---
+                    updateNextEpisodeCard(true); // Show the next episode card with countdown
+                    window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
+                });
             });
-            // --- Add this block for handling video end ---
-            // This will trigger if there's no endTime or if the user watches past the endTime
-            art.on('video:ended', () => {
-                // console.log("Video ended.");
-                // --- Handle postLoll on video end ---
-                if (currentMovieData.adstatus === true && !postAdShown && !isAdPlaying) {
-                    // console.log("Video ended, triggering postLoll ad");
-                    showAdCountdownAndPlayAd('postLoll', allLolls[2]);
-                    postAdShown = true;
-                }
-                // --- End postLoll Handling ---
-                updateNextEpisodeCard(true); // Show the next episode card with countdown
-                window.nextEpisodeCardShown = true; // Set flag so it doesn't trigger repeatedly
-            });
-        });
     } catch (error) {
         const event = new CustomEvent('playerAction', {
             detail: {
