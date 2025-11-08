@@ -2640,6 +2640,16 @@ async function initializeApp(optionData) {
                     path.setAttribute('d', "M8 5v14l11-7z");
                 }
             };
+            if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                // Listen for visibility changes (iOS fullscreen triggers these)
+                document.addEventListener('webkitfullscreenchange', () => {
+                    setTimeout(syncPlayPauseButton, 200);
+                });
+                
+                document.addEventListener('fullscreenchange', () => {
+                    setTimeout(syncPlayPauseButton, 200);
+                });
+            }
             
             // Use this function in all events
             art.on('play', syncPlayPauseButton);
