@@ -152,20 +152,20 @@ async function saveMovieData(sData, eData) {
         });
         const data = await response.json();
         if (data.success === true) {
-        const event = new CustomEvent('playerAction', {
-            detail: {
-                action: 'saveTime',
-                data: {
-                    databaseName: eData.databaseName,
-                    _id: eData._id,
-                    startTime: sData.startTime,
-                    endTime: eData.endTime,
-                    totalTime: eData.totalTime,
+            const event = new CustomEvent('playerAction', {
+                detail: {
+                    action: 'saveTime',
+                    data: {
+                        databaseName: eData.databaseName,
+                        _id: eData._id,
+                        startTime: sData.startTime,
+                        endTime: eData.endTime,
+                        totalTime: eData.totalTime,
+                    }
                 }
-            }
-        });
-        document.dispatchEvent(event); // dispatch globally
-    }
+            });
+            document.dispatchEvent(event); // dispatch globally
+        }
     }
 }
 function handleKeyPress(event) {
@@ -1356,20 +1356,20 @@ function _x(video, url, art) {
 }
 async function fetchWithRetry(url, options, retries = 4, delay = 1000) {
     for (let attempt = 1; attempt <= retries; attempt++) {
-      try {
-        const response = await fetch(url, options);
-        if (!response.ok) {
-          throw new Error(`API request failed with status ${response.status}`);
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+            const data = await response.json();
+            return data; // success
+        } catch (error) {
+            console.warn(`Attempt ${attempt} failed: ${error.message}`);
+            if (attempt === retries) throw error; // throw after last attempt
+            await new Promise(resolve => setTimeout(resolve, delay)); // wait before retry
         }
-        const data = await response.json();
-        return data; // success
-      } catch (error) {
-        console.warn(`Attempt ${attempt} failed: ${error.message}`);
-        if (attempt === retries) throw error; // throw after last attempt
-        await new Promise(resolve => setTimeout(resolve, delay)); // wait before retry
-      }
     }
-  }
+}
 async function initializeApp(optionData) {
     // Add cleanup at the very beginning of initialization
     cleanupCompletedMovies();
@@ -1387,7 +1387,7 @@ async function initializeApp(optionData) {
     let postAdShown = false;
     let isAdPlaying = false;
     let hideOverlay;
-    let h = {'Content-Type': 'application/json'};
+    let h = { 'Content-Type': 'application/json' };
     let h2 = {
         'Content-Type': 'application/json',
         'appversion': '1.0.1'
@@ -1460,15 +1460,15 @@ async function initializeApp(optionData) {
         const apiData = await fetchWithRetry("https://api.rebamovie.com/cinemaData", {
             method: "POST",
             headers: {
-              "Content-Type": "application/json",
-              "Content-Language": "1.0.1"
+                "Content-Type": "application/json",
+                "Content-Language": "1.0.1"
             },
             body: JSON.stringify({
-              MovieId: optionData.movieId,
-              userId: optionData.userId,
-              deviceType: "IOS"
+                MovieId: optionData.movieId,
+                userId: optionData.userId,
+                deviceType: "IOS"
             })
-          }, 4, 1000); // 4 retries, 1 second between each
+        }, 4, 5000); // 4 retries, 5 second between each
         let seriesData = {
             seasons: apiData.data.seasons.map((seasonName, index) => ({
                 season: index + 1,
@@ -1482,7 +1482,7 @@ async function initializeApp(optionData) {
                     action: 'seoData',
                     data: {
                         seoTitle: seriesData?.seasons[0]?.episodes[0]?.seoTitle,
-                        description: seriesData?.seasons[0]?.episodes[0]?.description,
+                        description: seriesData?.seasons[0]?.episodes[0]?.movieDataId?.description,
                     }
                 }
             });
@@ -1622,6 +1622,28 @@ async function initializeApp(optionData) {
                             }
                         };
                     },
+                },
+                {
+                    name: 'adCountdown',
+                    html: `
+                        <div id="adCountdownOverlay" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 9999; justify-content: center; align-items: flex-start; pointer-events: none; padding-top: 20px;">
+                            <div class="action-button-wrapper" style="width: auto; min-width: 200px;">
+                                <button class="dynamic-action-button" style="opacity: 0.6; cursor: not-allowed; font-size: 1rem; padding: 10px 20px;" id="persistentAdCountdown">
+                                    <span id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} 00:10</span>
+                                </button>
+                            </div>
+                        </div>
+                    `,
+                    style: {
+                        position: 'absolute',
+                        top: '0',
+                        left: '0',
+                        width: '100%',
+                        height: '100%',
+                        zIndex: 9999,
+                        pointerEvents: 'none',
+                        display: 'none'
+                    }
                 },
                 { name: 'playback', html: controlsPlayAndPauseElement, style: { width: '100%', height: '65px', alignSelf: 'center', boxSizing: 'border-box', opacity: "1", transition: "opacity 3s ease-in-out", position: 'absolute', pointerEvents: 'auto', top: '45%' } },
                 { name: 'bottomInfo', html: `<div id="bottom-left-info"><div id="season-episode-info"></div><div id="movie-title-display"></div></div><div id="more-episodes-container"></div>`, style: { position: 'absolute', inset: '0', pointerEvents: 'none' } },
@@ -2171,15 +2193,15 @@ async function initializeApp(optionData) {
                         moreEpisodesContainer.style.display = 'none'; // Hide if card creation failed
                     }
                 } else {
-                    const displayText = nextEpisodeData 
-                    ? (optionData.language != "en" ? "Izindi" : "Next")
-                    : (optionData.language != "en" ? "Izindi" : "Episodes");
-                
-                const displaySubtext = nextEpisodeData
-                    ? (optionData.language != "en" ? "Episode" : "Episode")
-                    : (optionData.language != "en" ? "Episode" : "All Episodes");
-                
-                moreEpisodesContainer.innerHTML = `
+                    const displayText = nextEpisodeData
+                        ? (optionData.language != "en" ? "Izindi" : "Next")
+                        : (optionData.language != "en" ? "Izindi" : "Episodes");
+
+                    const displaySubtext = nextEpisodeData
+                        ? (optionData.language != "en" ? "Episode" : "Episode")
+                        : (optionData.language != "en" ? "Episode" : "All Episodes");
+
+                    moreEpisodesContainer.innerHTML = `
                     <div id="more-episodes-card">
                         <div class="next-episode-text">
                             <h3>${displayText}</h3>
@@ -2193,16 +2215,16 @@ async function initializeApp(optionData) {
                         </div>
                     </div>
                 `;
-                
-                const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
-                if (moreEpisodesCard) {
-                    moreEpisodesCard.removeEventListener('click', setupEpisodesOverlay);
-                    moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
-                    moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-                    moreEpisodesCard.style.borderImage = '';
-                    moreEpisodesContainer.style.display = 'block';
+
+                    const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
+                    if (moreEpisodesCard) {
+                        moreEpisodesCard.removeEventListener('click', setupEpisodesOverlay);
+                        moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
+                        moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                        moreEpisodesCard.style.borderImage = '';
+                        moreEpisodesContainer.style.display = 'block';
+                    }
                 }
-                } 
             }
             /**
              * @function switchToEpisode
@@ -2353,6 +2375,18 @@ async function initializeApp(optionData) {
                 if (!actionButtonsContainer) return;
 
                 let countdownValue = 10; // 10 seconds countdown
+
+                // === CHANGE 1: Show the persistent overlay ===
+                const adCountdownLayer = art.layers.adCountdown;
+                const adCountdownOverlay = adCountdownLayer.querySelector('#adCountdownOverlay');
+                const persistentCountdownText = adCountdownLayer.querySelector('#persistentCountdownText');
+
+                if (adCountdownOverlay) {
+                    adCountdownOverlay.style.display = 'flex';
+                    art.layers.adCountdown.style.display = 'block';
+                }
+                // === END CHANGE 1 ===
+
                 const wrapper = document.createElement('div');
                 wrapper.id = `ad-countdown-${adType}`;
                 wrapper.className = 'action-button-wrapper';
@@ -2364,24 +2398,41 @@ async function initializeApp(optionData) {
                 button.style.opacity = '0.6';
                 button.style.cursor = 'not-allowed';
 
-                const updateButtonText = () => {
+                // === CHANGE 2: Update both locations instead of just one ===
+                const updateAllCountdowns = () => {
                     const minutes = Math.floor(countdownValue / 60);
                     const seconds = countdownValue % 60;
-                    button.innerHTML = `${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                };
+                    const countdownText = `${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-                updateButtonText();
+                    // Update original action button
+                    button.innerHTML = countdownText;
+
+                    // Update persistent overlay
+                    if (persistentCountdownText) {
+                        persistentCountdownText.textContent = countdownText;
+                    }
+                };
+                // === END CHANGE 2 ===
+
+                updateAllCountdowns(); // Changed from updateButtonText()
                 wrapper.appendChild(button);
                 actionButtonsContainer.innerHTML = '';
                 actionButtonsContainer.appendChild(wrapper);
 
                 window.adCountdownInterval = setInterval(() => {
                     countdownValue--;
-                    updateButtonText();
+                    updateAllCountdowns(); // Changed from updateButtonText()
 
                     if (countdownValue <= 0) {
                         clearInterval(window.adCountdownInterval);
                         window.adCountdownInterval = null;
+
+                        // === CHANGE 3: Hide the persistent overlay when countdown ends ===
+                        if (adCountdownOverlay) {
+                            adCountdownOverlay.style.display = 'none';
+                            art.layers.adCountdown.style.display = 'none';
+                        }
+                        // === END CHANGE 3 ===
 
                         // Remove countdown button
                         if (wrapper.parentNode === actionButtonsContainer) {
@@ -2495,6 +2546,17 @@ async function initializeApp(optionData) {
                     clearInterval(window.adCountdownInterval);
                     window.adCountdownInterval = null;
                 }
+
+                // === NEW: Hide the persistent ad countdown overlay ===
+                const adCountdownLayer = art.layers.adCountdown;
+                if (adCountdownLayer) {
+                    const adCountdownOverlay = adCountdownLayer.querySelector('#adCountdownOverlay');
+                    if (adCountdownOverlay) {
+                        adCountdownOverlay.style.display = 'none';
+                        art.layers.adCountdown.style.display = 'none';
+                    }
+                }
+                // === END NEW ===
 
                 // Clear action buttons after ad close
                 if (actionButtonsContainer) {
@@ -2657,7 +2719,7 @@ async function initializeApp(optionData) {
 
                 // Check if the accumulated watch time has crossed the 10-minute (600 second) threshold
                 // and if we haven't recorded the view yet for this playback instance.
-                if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) { 
+                if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) {
                     tenMinuteViewRecorded = true;
                     fetch("https://api.rebamovie.com/updateAnalytics", {
                         method: 'POST',
@@ -2667,7 +2729,7 @@ async function initializeApp(optionData) {
                             "_id": currentMovieData.episodeId,
                             "activity": "view",
                             "movieId": currentMovieData.movieId
-                            
+
                         })
                     });
                 }
