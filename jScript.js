@@ -557,53 +557,80 @@ function injectComponentStyles() {
                             line-height: 1.2;
                         }
                          .volume-control-wrapper {
-                             position: relative;
-                            display: flex;
-                            align-items: center;
-                        }
-                        
-                        .volume-slider-container {
-                            position: absolute;
-                            right: 100%;
-                            top: 50%;
-                            transform: translateY(-50%);
-                            margin-right: 10px;
-                            opacity: 0;
-                            visibility: hidden;
-                            transition: opacity 0.3s ease, visibility 0.3s ease;
-                        }
-                        
-                        .volume-control-wrapper:hover .volume-slider-container {
-                            opacity: 1;
-                            visibility: visible;
-                        }
-                        
-                        .volume-slider {
-                            width: 80px;
-                            height: 4px;
-                            background: rgba(255, 255, 255, 0.3);
-                            border-radius: 2px;
-                            outline: none;
-                            -webkit-appearance: none;
-                        }
-                        
-                        .volume-slider::-webkit-slider-thumb {
-                            -webkit-appearance: none;
-                            width: 12px;
-                            height: 12px;
-                            border-radius: 50%;
-                            background: #fff;
-                            cursor: pointer;
-                        }
-                        
-                        .volume-slider::-moz-range-thumb {
-                            width: 12px;
-                            height: 12px;
-                            border-radius: 50%;
-                            background: #fff;
-                            cursor: pointer;
-                            border: none;
-                        }  
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.volume-slider-container {
+    position: absolute;
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-right: 10px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.volume-control-wrapper:hover .volume-slider-container {
+    opacity: 1;
+    visibility: visible;
+}
+
+.volume-slider {
+    width: 80px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    outline: none;
+    -webkit-appearance: none;
+    cursor: pointer; /* Makes entire slider show pointer cursor */
+}
+
+/* Webkit (Chrome, Safari, Edge) - Filled track */
+.volume-slider::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+/* Firefox - Filled track */
+.volume-slider::-moz-range-track {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+/* Firefox - Progress (filled portion) */
+.volume-slider::-moz-range-progress {
+    height: 4px;
+    background: #fff; /* White filled portion */
+    border-radius: 2px;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer; /* Pointer on thumb */
+    margin-top: -4px; /* Centers the thumb vertically */
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: none;
+}
                         .quality-label { font-size: 13px; }
                         .quality-size { font-size: 10px; opacity: 0.7; }
                         .segment-button.active {
@@ -2647,9 +2674,19 @@ async function initializeApp(optionData) {
                 
                 // Volume slider functionality
                 if (volumeSlider) {
+                    // Function to update the slider fill
+                    const updateSliderFill = () => {
+                        const value = volumeSlider.value;
+                        const percentage = (value / volumeSlider.max) * 100;
+                        volumeSlider.style.background = `linear-gradient(to right, #fff 0%, #fff ${percentage}%, rgba(255, 255, 255, 0.3) ${percentage}%, rgba(255, 255, 255, 0.3) 100%)`;
+                    };
+                    
                     volumeSlider.addEventListener('input', (e) => {
                         const newVolume = parseFloat(e.target.value);
                         art.volume = newVolume;
+                        
+                        // Update slider fill
+                        updateSliderFill();
                         
                         // Unmute if volume is increased from 0
                         if (newVolume > 0 && art.muted) {
@@ -2660,14 +2697,6 @@ async function initializeApp(optionData) {
                         const isMuted = art.muted || newVolume === 0;
                         volumeIconPathEl.setAttribute('d', isMuted ? volumeOffIconPath : volumeOnIconPath);
                     });
-                    
-                    // Sync slider with artplayer volume changes
-                    art.on('volume', (v) => {
-                        volumeSlider.value = v;
-                        const isMuted = art.muted || v === 0;
-                        volumeIconPathEl.setAttribute('d', isMuted ? volumeOffIconPath : volumeOnIconPath);
-                    });
-                }
                 
                 // Set initial state
                 setTimeout(() => {
