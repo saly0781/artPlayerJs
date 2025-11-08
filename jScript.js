@@ -1602,7 +1602,7 @@ async function initializeApp(optionData) {
             moreVideoAttr: { "webkit-playsinline": true },
             layers: [
                 {
-                    name: 'topControls', html: mainTopControlsContainer, style: { position: 'absolute', width: '100%', height: 'auto', pointerEvents: 'auto' },
+                    name: 'topControls', html: mainTopControlsContainer, style: { position: 'absolute', width: '100%', height: 'auto', pointerEvents: 'none' },
                     mounted: function (...args) {
                         const backButton = args[0].querySelector('#backButton');
                         backButton.onclick = () => {
@@ -1629,15 +1629,15 @@ async function initializeApp(optionData) {
                         <div id="adCountdownOverlay" style="display: none; position: absolute; bottom: 80px; right: 20px; z-index: 9999; pointer-events: none;">
                             <div class="action-button-wrapper" style="width: auto; min-width: 200px;">
                                 <button class="dynamic-action-button" style="opacity: 0.6; cursor: not-allowed; font-size: 1rem; padding: 10px 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; font-weight: bold;" id="persistentAdCountdown">
-                                    <span id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} 00:10</span>
+                                    <span id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza mu" : "Ad in"} 10</span>
                                 </button>
                             </div>
                         </div>
                     `,
-                    style: { 
-                        position: 'absolute', 
-                        bottom: '80px', 
-                        right: '20px', 
+                    style: {
+                        position: 'absolute',
+                        bottom: '80px',
+                        right: '20px',
                         width: 'auto',
                         height: 'auto',
                         zIndex: 9999,
@@ -2348,11 +2348,11 @@ async function initializeApp(optionData) {
             const showAdCountdownAndPlayAd = (adType, adUrl) => {
                 //console.log(`Showing countdown for ${adType}`);
                 exitFullscreenIfNeeded();
-            
+
                 // Set the pending ad type and current region
                 pendingAdType = adType;
                 currentAdRegion = adType;
-            
+
                 if (art.duration < 600) {
                     // Play the ad after countdown
                     if (adPlugin) {
@@ -2371,54 +2371,53 @@ async function initializeApp(optionData) {
                     }
                     return;
                 }
-            
+
                 let countdownValue = 10; // 10 seconds countdown
-            
+
                 // === CHANGE 1: Show the persistent overlay ===
                 const adCountdownLayer = art.layers.adCountdown;
                 const adCountdownOverlay = adCountdownLayer.querySelector('#adCountdownOverlay');
                 const persistentCountdownText = adCountdownLayer.querySelector('#persistentCountdownText');
-            
+
                 if (adCountdownOverlay) {
                     adCountdownOverlay.style.display = 'flex';
                     art.layers.adCountdown.style.display = 'block';
                 }
                 // === END CHANGE 1 ===
-            
+
                 // === REMOVE THE ACTION BUTTON CREATION - JUST CLEAR IT ===
                 if (actionButtonsContainer) {
                     actionButtonsContainer.innerHTML = ''; // Clear any existing buttons
                 }
-            
+
                 // === CHANGE 2: Update ONLY the persistent overlay ===
                 const updateCountdown = () => {
-                    const minutes = Math.floor(countdownValue / 60);
-                    const seconds = countdownValue % 60;
-                    const countdownText = `${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            
+                    const countdownText = `${countdownValue.toString().padStart(2, '0')}`;
+                    const displayText = `${optionData.language != "en" ? "Kwamamaza mu" : "Ad in"} ${countdownText}`;
+
                     // Update ONLY the persistent overlay (remove the action button update)
                     if (persistentCountdownText) {
-                        persistentCountdownText.textContent = countdownText;
+                        persistentCountdownText.textContent = displayText;
                     }
                 };
                 // === END CHANGE 2 ===
-            
+
                 updateCountdown(); // Changed from updateAllCountdowns()
-            
+
                 window.adCountdownInterval = setInterval(() => {
                     countdownValue--;
                     updateCountdown(); // Changed from updateAllCountdowns()
-            
+
                     if (countdownValue <= 0) {
                         clearInterval(window.adCountdownInterval);
                         window.adCountdownInterval = null;
-            
+
                         // === CHANGE 3: Hide the persistent overlay when countdown ends ===
                         if (adCountdownOverlay) {
                             adCountdownOverlay.style.display = 'none';
                             art.layers.adCountdown.style.display = 'none';
                         }
-            
+
                         // Play the ad after countdown
                         if (adPlugin && pendingAdType === adType) { // Only play if this is still the pending ad
                             //console.log(`Countdown finished, playing ${adType}`);
@@ -2431,7 +2430,7 @@ async function initializeApp(optionData) {
                                 adPlugin.updateVideoLink(adUrl, duration, duration);
                             }
                         }
-            
+
                         // Clear pending states
                         pendingAdType = null;
                         currentAdRegion = null;
@@ -2635,13 +2634,13 @@ async function initializeApp(optionData) {
                     playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
                 }
             });
-            
+
             art.on('play', () => {
                 if (playPauseButton) {
                     playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
                 }
             });
-            
+
             // Also add seeking event to handle seek state properly
             art.on('video:seek', () => {
                 // When seeking starts, show pause icon (video is effectively paused during seek)
@@ -2649,7 +2648,7 @@ async function initializeApp(optionData) {
                     playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
                 }
             });
-            
+
             art.on('video:seeked', () => {
                 // After seek completes, restore correct state based on actual playback
                 if (art.playing) {
@@ -2668,7 +2667,7 @@ async function initializeApp(optionData) {
                     playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
                 }
             });
-            
+
             art.on('video:canplay', () => {
                 // Restore correct state when video can play again
                 if (art.playing) {
