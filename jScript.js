@@ -1677,7 +1677,7 @@ async function initializeApp(optionData) {
         const art = artInstance;
         art.on('ready', () => {
             art.aspectRatio = '16:9';
-            syncPlayPauseButton();
+            
             // --- Touch Swipe Logic for Episodes Overlay ---
 
             // 1. Get the relevant DOM elements
