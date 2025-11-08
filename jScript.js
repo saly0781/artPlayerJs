@@ -1677,6 +1677,7 @@ async function initializeApp(optionData) {
         const art = artInstance;
         art.on('ready', () => {
             art.aspectRatio = '16:9';
+            syncPlayPauseButton();
             // --- Touch Swipe Logic for Episodes Overlay ---
 
             // 1. Get the relevant DOM elements
@@ -2629,53 +2630,27 @@ async function initializeApp(optionData) {
                 });
             }
             // --- ArtPlayer Event Hooks ---
-            art.on('pause', () => {
-                if (playPauseButton) {
-                    playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
-                }
-            });
-
-            art.on('play', () => {
-                if (playPauseButton) {
-                    playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
-                }
-            });
-
-            // Also add seeking event to handle seek state properly
-            art.on('video:seek', () => {
-                // When seeking starts, show pause icon (video is effectively paused during seek)
-                if (playPauseButton) {
-                    playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
-                }
-            });
-
-            art.on('video:seeked', () => {
-                // After seek completes, restore correct state based on actual playback
+            const syncPlayPauseButton = () => {
+                if (!playPauseButton) return;
+                
+                const path = playPauseButton.querySelector('svg path');
                 if (art.playing) {
-                    if (playPauseButton) {
-                        playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
-                    }
+                    path.setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
                 } else {
-                    if (playPauseButton) {
-                        playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
-                    }
+                    path.setAttribute('d', "M8 5v14l11-7z");
                 }
-            });
-            art.on('video:waiting', () => {
-                // Show pause icon when video is buffering/loading
-                if (playPauseButton) {
-                    playPauseButton.querySelector('svg path').setAttribute('d', "M8 5v14l11-7z");
-                }
-            });
-
-            art.on('video:canplay', () => {
-                // Restore correct state when video can play again
-                if (art.playing) {
-                    if (playPauseButton) {
-                        playPauseButton.querySelector('svg path').setAttribute('d', "M6 19h4V5H6v14zm8-14v14h4V5h-4z");
-                    }
-                }
-            });
+            };
+            
+            // Use this function in all events
+            art.on('play', syncPlayPauseButton);
+            art.on('pause', syncPlayPauseButton);
+            art.on('fullscreen', syncPlayPauseButton);
+            art.on('resize', syncPlayPauseButton);
+            art.on('video:seeked', syncPlayPauseButton);
+            art.on('video:canplay', syncPlayPauseButton);
+            
+            // Also call it initially
+            setTimeout(syncPlayPauseButton, 1000);
             art.on('control', state => {
                 if (lockLayer.style.display === 'flex') return;
                 mainControlsContainer.classList.toggle('hidden', !state);
