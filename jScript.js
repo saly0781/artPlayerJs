@@ -1628,7 +1628,7 @@ async function initializeApp(optionData) {
                     html: `
                         <div id="adCountdownOverlay" style="display: none; position: absolute; bottom: 80px; right: 20px; z-index: 9999; pointer-events: none;">
                             <div class="action-button-wrapper" style="width: auto; min-width: 200px;">
-                                <button class="dynamic-action-button" style="opacity: 0.6; cursor: not-allowed; font-size: 1rem; padding: 10px 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.3);" id="persistentAdCountdown">
+                                <button class="dynamic-action-button" style="opacity: 0.6; cursor: not-allowed; font-size: 1rem; padding: 10px 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; font-weight: bold;" id="persistentAdCountdown">
                                     <span id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza muri" : "Ads in"} 00:10</span>
                                 </button>
                             </div>
@@ -1636,7 +1636,7 @@ async function initializeApp(optionData) {
                     `,
                     style: { 
                         position: 'absolute', 
-                        bottom: '80px', // Position above bottom controls
+                        bottom: '80px', 
                         right: '20px', 
                         width: 'auto',
                         height: 'auto',
