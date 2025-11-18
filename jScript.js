@@ -138,7 +138,7 @@ const mergeSavedWithFreshEpisode = (savedEpisode, freshEpisode) => {
 async function saveMovieData(sData, eData) {
     // Save the movie data to the global savingData object
     if (sData._id == eData._id) {
-        const response = await fetch("https://api.rebamovie.com/updateAnalytics", {
+        const response = await fetch("https://api.unixdevelopers.rw/_functions/updateAnalytics", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1540,7 +1540,7 @@ async function initializeApp(optionData) {
                 </div>
             `;
     try {
-        const apiData = await fetchWithRetry("https://api.rebamovie.com/cinemaData", {
+        const apiData = await fetchWithRetry("https://api.unixdevelopers.rw/_functions/cinemaData", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -2849,7 +2849,7 @@ async function initializeApp(optionData) {
                 // and if we haven't recorded the view yet for this playback instance.
                 if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) {
                     tenMinuteViewRecorded = true;
-                    fetch("https://api.rebamovie.com/updateAnalytics", {
+                    fetch("https://api.unixdevelopers.rw/_functions/updateAnalytics", {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
