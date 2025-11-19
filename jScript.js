@@ -1945,10 +1945,15 @@ async function initializeApp(optionData) {
                     });
                 };
                 hideOverlay = (ed) => {
-                    ed.preventDefault();
-                    ed.stopPropagation();
-
+                    if (ed) {
+                        ed.preventDefault();
+                        ed.stopPropagation();
+                    }
+                
                     if (episodesOverlay) {
+                        // Store reference to the more episodes card before hiding
+                        const moreEpisodesCard = document.querySelector('#more-episodes-card');
+                        
                         // --- Use Opacity for Fade Out ---
                         // Ensure transition is enabled (check CSS)
                         if (artBottom) artBottom.style.display = 'flex'; // Show art bottom if hidden
@@ -1957,7 +1962,7 @@ async function initializeApp(optionData) {
                         // Apply final state for fade out
                         episodesOverlay.style.opacity = '0';
                         episodesOverlay.style.pointerEvents = 'none'; // Disable interaction during/after fade out
-
+                
                         // Delay hiding the layer to let the transition finish (match CSS duration)
                         setTimeout(() => {
                             // Check state before hiding (good practice, though opacity handles visibility)
@@ -1966,6 +1971,14 @@ async function initializeApp(optionData) {
                                 episodesLayer.style.display = 'none';  // Hide parent layer
                                 episodesOverlay.classList.remove('seasons-active'); // Reset potential state
                                 if (artBottom) artBottom.style.display = 'flex'; // Show art bottom if hidden
+                                
+                                // CRITICAL FIX: Return focus to more episodes card for TV navigation
+                                if (moreEpisodesCard) {
+                                    // Small delay to ensure the overlay is completely hidden
+                                    setTimeout(() => {
+                                        moreEpisodesCard.focus();
+                                    }, 100);
+                                }
                             }
                         }, 300); // Match CSS transition duration (adjust if different)
                     }
