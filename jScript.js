@@ -1026,6 +1026,11 @@ function injectDynamicButtonStyles() {
                             transition: all 0.2s ease;
                             /* Ensure box-sizing is correct for border calculations */
                             box-sizing: border-box;
+                            outline: none;
+                        }
+                        #more-episodes-card:focus {
+                            outline: 4px solid #1fdf67; /* Fallback for older browsers */
+                            box-shadow: 0 0 0 4px #1fdf67; /* Main solution - respects border-radius */
                         }
                         #more-episodes-card:hover {
                             background: rgba(55, 55, 55, 0.8);
@@ -2208,7 +2213,7 @@ async function initializeApp(optionData) {
                     const cardId = 'next-episode-card'; // Use a different ID for clarity if needed
                     const episodeDisplay = `EP ${nextEpisodeData.episode}${nextEpisodeData.partName || ''}`;
                     moreEpisodesContainer.innerHTML = `
-                        <div id="more-episodes-card">
+                        <div id="more-episodes-card" tabindex="0">
                             <div class="next-episode-text">
                                 <h3>${optionData.language != "en" ? "Izindi" : "Next"}</h3>
                                 <p>${episodeDisplay}</p>
@@ -2298,7 +2303,7 @@ async function initializeApp(optionData) {
                         : (optionData.language != "en" ? "Episode" : "All Episodes");
 
                     moreEpisodesContainer.innerHTML = `
-                    <div id="more-episodes-card">
+                    <div id="more-episodes-card" tabindex="0">
                         <div class="next-episode-text">
                             <h3>${displayText}</h3>
                             <p>${displaySubtext}</p>
