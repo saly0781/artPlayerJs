@@ -1709,7 +1709,7 @@ async function initializeApp(optionData) {
                 {
                     name: 'adCountdown',
                     html: `
-                        <div id="adCountdownOverlay" style="display: none; position: absolute; bottom: 80px; left: 20px; pointer-events: none;">
+                        <div id="adCountdownOverlay" style="display: none; position: absolute; bottom: 250px; right: 20px; pointer-events: none;">
                             <div class="action-button-wrapper" style="width: auto; min-width: 200px;">
                                 <button class="dynamic-action-button" style="opacity: 0.6; cursor: not-allowed; font-size: 1rem; padding: 10px 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; font-weight: bold;" id="persistentAdCountdown">
                                     <span id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza mu" : "Ad in"} 10</span>
