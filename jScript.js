@@ -1950,43 +1950,46 @@ async function initializeApp(optionData) {
                     });
                 };
                 hideOverlay = (ed) => {
-                    if (ed) {
-                        ed.preventDefault();
-                        ed.stopPropagation();
-                    }
+                    ed.preventDefault();
+                    ed.stopPropagation();
                 
-                    if (episodesOverlay) {
-                        // Store reference to the more episodes card before hiding
-                        const moreEpisodesCard = document.querySelector('#more-episodes-card');
-                        
-                        // --- Use Opacity for Fade Out ---
-                        // Ensure transition is enabled (check CSS)
-                        if (artBottom) artBottom.style.display = 'flex'; // Show art bottom if hidden
-                        episodesOverlay.classList.remove('no-transition');
-                        episodesOverlay.classList.remove('visible'); // Remove class if used for state
-                        // Apply final state for fade out
-                        episodesOverlay.style.opacity = '0';
-                        episodesOverlay.style.pointerEvents = 'none'; // Disable interaction during/after fade out
+                    if (!episodesOverlay || !episodesLayer) return;
                 
-                        // Delay hiding the layer to let the transition finish (match CSS duration)
-                        setTimeout(() => {
-                            // Check state before hiding (good practice, though opacity handles visibility)
-                            if (episodesOverlay && episodesLayer && parseFloat(window.getComputedStyle(episodesOverlay).opacity) <= 0.1) {
-                                episodesOverlay.style.display = 'none'; // Hide overlay element
-                                episodesLayer.style.display = 'none';  // Hide parent layer
-                                episodesOverlay.classList.remove('seasons-active'); // Reset potential state
-                                if (artBottom) artBottom.style.display = 'flex'; // Show art bottom if hidden
-                                
-                                // CRITICAL FIX: Return focus to more episodes card for TV navigation
-                                if (moreEpisodesCard) {
-                                    // Small delay to ensure the overlay is completely hidden
-                                    setTimeout(() => {
-                                        moreEpisodesCard.focus();
-                                    }, 100);
-                                }
+                    // 1. Fade out
+                    episodesOverlay.classList.remove('no-transition');
+                    episodesOverlay.classList.remove('visible');
+                    episodesOverlay.style.opacity = '0';
+                    episodesOverlay.style.pointerEvents = 'none';
+                
+                    // 2. After transition ends → fully hide + RESTORE focusability
+                    setTimeout(() => {
+                        episodesLayer.style.display = 'none';
+                        episodesOverlay.style.display = 'none';
+                
+                        // CRITICAL FOR TV: Restore bottom controls and make More Episodes clickable again
+                        if (artBottom) {
+                            artBottom.style.display = 'flex';
+                            artBottom.style.pointerEvents = 'auto'; // explicitly re-enable
+                        }
+                
+                        // Re-enable the More Episodes card explicitly
+                        const moreEpContainer = art.layers.bottomInfo.querySelector('#more-episodes-container');
+                        if (moreEpContainer) {
+                            moreEpContainer.style.pointerEvents = 'auto';
+                            moreEpContainer.style.opacity = '1';
+                
+                            // Find the card and make sure it's focusable
+                            const card = moreEpContainer.querySelector('#more-episodes-card');
+                            if (card) {
+                                card.tabIndex = 0;           // make focusable
+                                card.style.pointerEvents = 'auto';
+                                // Optional: give it focus so user can immediately press OK again
+                                setTimeout(() => card.focus(), 100);
                             }
-                        }, 300); // Match CSS transition duration (adjust if different)
-                    }
+                        }
+                
+                        episodesOverlay.classList.remove('seasons-active');
+                    }, 350); // match your CSS transition time (0.3s + buffer)
                 };
                 const populateEpisodes = (seasonIndex) => {
                     if (!seriesData || !episodesList) return;
