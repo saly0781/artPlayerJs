@@ -2300,19 +2300,10 @@ async function initializeApp(optionData) {
                 `;
 
                     const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
-                    if (moreEpisodesContainer.parentElement && !moreEpisodesContainer.parentElement.dataset.delegationSet) {
-                        moreEpisodesContainer.parentElement.addEventListener('click', (e) => {
-                            const card = e.target.closest('#more-episodes-card');
-                            if (card) {
-                                setupEpisodesOverlay();
-                            }
-                        });
-                        moreEpisodesContainer.parentElement.dataset.delegationSet = 'true';
-                    }
-                    
-                    // Then in your update function, just create the HTML without worrying about listeners
+                    const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
                     if (moreEpisodesCard) {
-                        // No event listener needed here anymore!
+                        // Use event delegation or ensure the same function reference
+                        moreEpisodesCard.onclick = setupEpisodesOverlay; // Simple assignment
                         moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
                         moreEpisodesCard.style.borderImage = '';
                         moreEpisodesContainer.style.display = 'block';
