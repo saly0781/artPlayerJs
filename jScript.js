@@ -1416,19 +1416,15 @@ function injectEpisodesOverlayStyles() {
     document.head.appendChild(styleElement);
 }
 injectEpisodesOverlayStyles();
+// --- Add Debug CSS Styles ---
 function injectDebugStyles() {
     const debugCSS = `
-#adCountdownOverlay {
-    display: flex !important;
-    pointer-events: none !important;
-}
 #debugInfo {
     white-space: pre-wrap;
     word-break: break-all;
-    max-height: 100px;
-    overflow-y: auto;
     font-family: 'Courier New', monospace;
     line-height: 1.2;
+    /* Remove max-height and overflow to allow continuous growth */
 }
 `;
     const styleElement = document.createElement('style');
@@ -1438,6 +1434,7 @@ function injectDebugStyles() {
     document.head.appendChild(styleElement);
 }
 injectDebugStyles();
+// --- End Debug CSS Styles ---
 let allLolls = ["https://video.wixstatic.com/video/d7f9fb_e09d55d52f0e427c9891189606b4925b/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_fbbc3d184a5c4ff284da54cb2e72c453/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_08949df5483a4b1dbe9d36d7451994e9/1080p/mp4/file.mp4"];
 function _m(video, url, art) {
     if (Hls.isSupported()) {
@@ -1754,10 +1751,10 @@ async function initializeApp(optionData) {
                     name: 'adCountdown',
                     html: `
                         <div id="adCountdownOverlay" style="display: flex; position: absolute; bottom: 80px; left: 20px; pointer-events: none; z-index: 1000;">
-                            <div class="action-button-wrapper" style="width: auto; min-width: 300px; max-width: 400px;">
-                                <button class="dynamic-action-button" style="opacity: 0.8; cursor: not-allowed; font-size: 0.9rem; padding: 8px 16px; background: rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; font-weight: normal; text-align: left;">
+                            <div class="action-button-wrapper" style="width: auto; min-width: 300px; max-width: 400px; max-height: 500px; overflow: visible;">
+                                <button class="dynamic-action-button" style="opacity: 0.8; cursor: not-allowed; font-size: 0.9rem; padding: 8px 16px; background: rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; font-weight: normal; text-align: left; min-height: 50px; height: auto;">
                                     <div id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza mu" : "Ad in"} 10</div>
-                                    <div id="debugInfo" style="font-size: 0.7rem; margin-top: 5px; color: #1fdf67; font-family: monospace;"></div>
+                                    <div id="debugInfo" style="font-size: 0.7rem; margin-top: 5px; color: #1fdf67; font-family: monospace; white-space: pre-wrap;"></div>
                                 </button>
                             </div>
                         </div>
@@ -1765,11 +1762,11 @@ async function initializeApp(optionData) {
                     style: {
                         position: 'absolute',
                         bottom: '80px',
-                        left: '20px', // Changed from right to left
+                        left: '20px',
                         width: 'auto',
                         height: 'auto',
                         pointerEvents: 'none',
-                        display: 'flex',
+                        display: 'block',
                         zIndex: 1000
                     }
                 },
