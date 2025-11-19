@@ -1027,10 +1027,16 @@ function injectDynamicButtonStyles() {
                             /* Ensure box-sizing is correct for border calculations */
                             box-sizing: border-box;
                             outline: none;
+                            position: relative;
                         }
                         #more-episodes-card:focus {
                             outline: 4px solid #1fdf67; /* Fallback for older browsers */
                             box-shadow: 0 0 0 4px #1fdf67; /* Main solution - respects border-radius */
+                            transform: scale(1.02);
+                        }
+                        #more-episodes-card:focus-visible {
+                           outline: 4px solid #1fdf67;
+                           box-shadow: 0 0 0 4px #1fdf67;
                         }
                         #more-episodes-card:hover {
                             background: rgba(55, 55, 55, 0.8);
@@ -1460,30 +1466,25 @@ async function fetchWithRetry(url, options, retries = 4, delay = 1000) {
 }
 // Add this during your app initialization, after art.on('ready')
 function setupGlobalEventDelegation() {
-    // Click handler for all devices
-    document.addEventListener('click', function (e) {
+    // Single unified handler for all interaction types
+    function handleMoreEpisodesInteraction(e) {
         const moreEpisodesCard = e.target.closest('#more-episodes-card');
         if (moreEpisodesCard) {
-            console.log('More episodes card clicked via delegation');
+            console.log('More episodes card activated via delegation');
             setupEpisodesOverlay(e);
-            e.preventDefault();
+            
+            // Prevent default for all event types
+            if (e.cancelable) {
+                e.preventDefault();
+            }
             e.stopPropagation();
         }
-    });
+    }
 
-    // Touch handler for mobile/touch devices
-    document.addEventListener('touchend', function (e) {
-        const moreEpisodesCard = e.target.closest('#more-episodes-card');
-        if (moreEpisodesCard) {
-            console.log('More episodes card touched via delegation');
-            setupEpisodesOverlay(e);
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    });
-
-    // Keypress handler for TV/remote (Enter key)
-    document.addEventListener('keypress', function (e) {
+    // Add event listeners for all interaction types
+    document.addEventListener('click', handleMoreEpisodesInteraction);
+    document.addEventListener('touchend', handleMoreEpisodesInteraction);
+    document.addEventListener('keydown', function(e) {
         const moreEpisodesCard = e.target.closest('#more-episodes-card');
         if (moreEpisodesCard && (e.key === 'Enter' || e.key === ' ')) {
             console.log('More episodes card activated via keyboard');
@@ -1956,7 +1957,20 @@ async function initializeApp(optionData) {
             };
             // --- Episodes Overlay Setup ---
             const setupEpisodesOverlay = (ed) => {
-                const artBottom = document.querySelector('.art-bottom');
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                const episodesLayer = document.querySelector('.art-layer-episodes');
+                const episodesOverlay = episodesLayer ? episodesLayer.querySelector('#episodesOverlay') : null;
+                
+                if (!episodesLayer || !episodesOverlay) {
+                    console.error("Episodes overlay elements not found");
+                    return;
+                }
+            
+                // Rest of your existing setupEpisodesOverlay function code...
                 const closeEpisodesBtn = episodesLayer.querySelector('#closeEpisodesOverlay');
                 const episodesList = episodesLayer.querySelector('#episodesList');
                 const scrollLeftBtn = episodesLayer.querySelector('#scrollLeft');
