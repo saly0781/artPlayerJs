@@ -2302,11 +2302,11 @@ async function initializeApp(optionData) {
 
                     const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
                     if (moreEpisodesCard) {
-                        moreEpisodesCard.removeEventListener('click', setupEpisodesOverlay);
                         moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
+                        // Reset border styles potentially left from countdown
                         moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
                         moreEpisodesCard.style.borderImage = '';
-                        moreEpisodesContainer.style.display = 'block';
+                        moreEpisodesContainer.style.display = 'block'; // Ensure it's visible
                     }
                 }
             }
