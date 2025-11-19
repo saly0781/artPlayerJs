@@ -2301,12 +2301,22 @@ async function initializeApp(optionData) {
                 `;
 
                     const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
+                    if (moreEpisodesContainer.parentElement && !moreEpisodesContainer.parentElement.dataset.delegationSet) {
+                        moreEpisodesContainer.parentElement.addEventListener('click', (e) => {
+                            const card = e.target.closest('#more-episodes-card');
+                            if (card) {
+                                setupEpisodesOverlay();
+                            }
+                        });
+                        moreEpisodesContainer.parentElement.dataset.delegationSet = 'true';
+                    }
+                    
+                    // Then in your update function, just create the HTML without worrying about listeners
                     if (moreEpisodesCard) {
-                        moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
-                        // Reset border styles potentially left from countdown
+                        // No event listener needed here anymore!
                         moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
                         moreEpisodesCard.style.borderImage = '';
-                        moreEpisodesContainer.style.display = 'block'; // Ensure it's visible
+                        moreEpisodesContainer.style.display = 'block';
                     }
                 }
             }
