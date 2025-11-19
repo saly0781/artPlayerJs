@@ -2300,7 +2300,6 @@ async function initializeApp(optionData) {
                 `;
 
                     const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
-                    const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
                     if (moreEpisodesCard) {
                         // Use event delegation or ensure the same function reference
                         moreEpisodesCard.onclick = setupEpisodesOverlay; // Simple assignment
