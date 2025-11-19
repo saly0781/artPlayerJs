@@ -138,7 +138,7 @@ const mergeSavedWithFreshEpisode = (savedEpisode, freshEpisode) => {
 async function saveMovieData(sData, eData) {
     // Save the movie data to the global savingData object
     if (sData._id == eData._id) {
-        const response = await fetch("https://api.unixdevelopers.rw/_functions/updateAnalytics", {
+        const response = await fetch("https://api.rebamovie.com/updateAnalytics", {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1026,17 +1026,6 @@ function injectDynamicButtonStyles() {
                             transition: all 0.2s ease;
                             /* Ensure box-sizing is correct for border calculations */
                             box-sizing: border-box;
-                            outline: none;
-                            position: relative;
-                        }
-                        #more-episodes-card:focus {
-                            outline: 4px solid #1fdf67; /* Fallback for older browsers */
-                            box-shadow: 0 0 0 4px #1fdf67; /* Main solution - respects border-radius */
-                            transform: scale(1.02);
-                        }
-                        #more-episodes-card:focus-visible {
-                           outline: 4px solid #1fdf67;
-                           box-shadow: 0 0 0 4px #1fdf67;
                         }
                         #more-episodes-card:hover {
                             background: rgba(55, 55, 55, 0.8);
@@ -1464,38 +1453,6 @@ async function fetchWithRetry(url, options, retries = 4, delay = 1000) {
         }
     }
 }
-// Add this during your app initialization, after art.on('ready')
-function setupGlobalEventDelegation() {
-    // Single unified handler for all interaction types
-    function handleMoreEpisodesInteraction(e) {
-        const moreEpisodesCard = e.target.closest('#more-episodes-card');
-        if (moreEpisodesCard) {
-            console.log('More episodes card activated via delegation');
-            setupEpisodesOverlay(e);
-            
-            // Prevent default for all event types
-            if (e.cancelable) {
-                e.preventDefault();
-            }
-            e.stopPropagation();
-        }
-    }
-
-    // Add event listeners for all interaction types
-    document.addEventListener('click', handleMoreEpisodesInteraction);
-    document.addEventListener('touchend', handleMoreEpisodesInteraction);
-    document.addEventListener('keydown', function(e) {
-        const moreEpisodesCard = e.target.closest('#more-episodes-card');
-        if (moreEpisodesCard && (e.key === 'Enter' || e.key === ' ')) {
-            console.log('More episodes card activated via keyboard');
-            setupEpisodesOverlay(e);
-            e.preventDefault();
-            e.stopPropagation();
-        }
-    });
-}
-
-
 async function initializeApp(optionData) {
     // Add cleanup at the very beginning of initialization
     cleanupCompletedMovies();
@@ -1583,7 +1540,7 @@ async function initializeApp(optionData) {
                 </div>
             `;
     try {
-        const apiData = await fetchWithRetry("https://api.unixdevelopers.rw/_functions/cinemaData", {
+        const apiData = await fetchWithRetry("https://api.rebamovie.com/cinemaData", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -1752,7 +1709,7 @@ async function initializeApp(optionData) {
                 {
                     name: 'adCountdown',
                     html: `
-                        <div id="adCountdownOverlay" style="display: none; position: absolute; bottom: 80px; right: 20px; pointer-events: none;">
+                        <div id="adCountdownOverlay" style="display: none; position: absolute; bottom: 80px; left: 20px; pointer-events: none;">
                             <div class="action-button-wrapper" style="width: auto; min-width: 200px;">
                                 <button class="dynamic-action-button" style="opacity: 0.6; cursor: not-allowed; font-size: 1rem; padding: 10px 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; font-weight: bold;" id="persistentAdCountdown">
                                     <span id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza mu" : "Ad in"} 10</span>
@@ -1812,9 +1769,6 @@ async function initializeApp(optionData) {
             // Add event listener to the document
             const adPlugin = art.plugins.artplayerPluginAds;
             document.addEventListener('keydown', handleKeyPress);
-
-            // --- CALL GLOBAL EVENT DELEGATION SETUP HERE ---
-            setupGlobalEventDelegation();
             // --- DOM Element References from art.layers ---
             const actionButtonsContainer = art.layers.topControls.querySelector('#actionButtonContainer');
             const qualityControlContainer = art.layers.topControls.querySelector('#qualityControl');
@@ -1957,20 +1911,7 @@ async function initializeApp(optionData) {
             };
             // --- Episodes Overlay Setup ---
             const setupEpisodesOverlay = (ed) => {
-                if (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                
-                const episodesLayer = document.querySelector('.art-layer-episodes');
-                const episodesOverlay = episodesLayer ? episodesLayer.querySelector('#episodesOverlay') : null;
-                
-                if (!episodesLayer || !episodesOverlay) {
-                    console.error("Episodes overlay elements not found");
-                    return;
-                }
-            
-                // Rest of your existing setupEpisodesOverlay function code...
+                const artBottom = document.querySelector('.art-bottom');
                 const closeEpisodesBtn = episodesLayer.querySelector('#closeEpisodesOverlay');
                 const episodesList = episodesLayer.querySelector('#episodesList');
                 const scrollLeftBtn = episodesLayer.querySelector('#scrollLeft');
@@ -2004,15 +1945,10 @@ async function initializeApp(optionData) {
                     });
                 };
                 hideOverlay = (ed) => {
-                    if (ed) {
-                        ed.preventDefault();
-                        ed.stopPropagation();
-                    }
+                    ed.preventDefault();
+                    ed.stopPropagation();
 
                     if (episodesOverlay) {
-                        // Store reference to the more episodes card before hiding
-                        const moreEpisodesCard = document.querySelector('#more-episodes-card');
-
                         // --- Use Opacity for Fade Out ---
                         // Ensure transition is enabled (check CSS)
                         if (artBottom) artBottom.style.display = 'flex'; // Show art bottom if hidden
@@ -2030,14 +1966,6 @@ async function initializeApp(optionData) {
                                 episodesLayer.style.display = 'none';  // Hide parent layer
                                 episodesOverlay.classList.remove('seasons-active'); // Reset potential state
                                 if (artBottom) artBottom.style.display = 'flex'; // Show art bottom if hidden
-
-                                // CRITICAL FIX: Return focus to more episodes card for TV navigation
-                                if (moreEpisodesCard) {
-                                    // Small delay to ensure the overlay is completely hidden
-                                    setTimeout(() => {
-                                        moreEpisodesCard.focus();
-                                    }, 100);
-                                }
                             }
                         }, 300); // Match CSS transition duration (adjust if different)
                     }
@@ -2267,7 +2195,7 @@ async function initializeApp(optionData) {
                     const cardId = 'next-episode-card'; // Use a different ID for clarity if needed
                     const episodeDisplay = `EP ${nextEpisodeData.episode}${nextEpisodeData.partName || ''}`;
                     moreEpisodesContainer.innerHTML = `
-                        <div id="more-episodes-card" tabindex="0">
+                        <div id="more-episodes-card">
                             <div class="next-episode-text">
                                 <h3>${optionData.language != "en" ? "Izindi" : "Next"}</h3>
                                 <p>${episodeDisplay}</p>
@@ -2357,7 +2285,7 @@ async function initializeApp(optionData) {
                         : (optionData.language != "en" ? "Episode" : "All Episodes");
 
                     moreEpisodesContainer.innerHTML = `
-                    <div id="more-episodes-card" tabindex="0">
+                    <div id="more-episodes-card">
                         <div class="next-episode-text">
                             <h3>${displayText}</h3>
                             <p>${displaySubtext}</p>
@@ -2373,8 +2301,8 @@ async function initializeApp(optionData) {
 
                     const moreEpisodesCard = moreEpisodesContainer.querySelector('#more-episodes-card');
                     if (moreEpisodesCard) {
-                        // Use event delegation or ensure the same function reference
-                       // moreEpisodesCard.onclick = setupEpisodesOverlay; // Simple assignment
+                        moreEpisodesCard.removeEventListener('click', setupEpisodesOverlay);
+                        moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
                         moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
                         moreEpisodesCard.style.borderImage = '';
                         moreEpisodesContainer.style.display = 'block';
@@ -2920,7 +2848,7 @@ async function initializeApp(optionData) {
                 // and if we haven't recorded the view yet for this playback instance.
                 if (!tenMinuteViewRecorded && accumulatedWatchTime >= 600) {
                     tenMinuteViewRecorded = true;
-                    fetch("https://api.unixdevelopers.rw/_functions/updateAnalytics", {
+                    fetch("https://api.rebamovie.com/updateAnalytics", {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
