@@ -1416,6 +1416,28 @@ function injectEpisodesOverlayStyles() {
     document.head.appendChild(styleElement);
 }
 injectEpisodesOverlayStyles();
+function injectDebugStyles() {
+    const debugCSS = `
+#adCountdownOverlay {
+    display: flex !important;
+    pointer-events: none !important;
+}
+#debugInfo {
+    white-space: pre-wrap;
+    word-break: break-all;
+    max-height: 100px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    line-height: 1.2;
+}
+`;
+    const styleElement = document.createElement('style');
+    styleElement.id = 'debug-styles';
+    styleElement.type = 'text/css';
+    styleElement.appendChild(document.createTextNode(debugCSS));
+    document.head.appendChild(styleElement);
+}
+injectDebugStyles();
 let allLolls = ["https://video.wixstatic.com/video/d7f9fb_e09d55d52f0e427c9891189606b4925b/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_fbbc3d184a5c4ff284da54cb2e72c453/1080p/mp4/file.mp4", "https://video.wixstatic.com/video/d7f9fb_08949df5483a4b1dbe9d36d7451994e9/1080p/mp4/file.mp4"];
 function _m(video, url, art) {
     if (Hls.isSupported()) {
@@ -1453,6 +1475,28 @@ async function fetchWithRetry(url, options, retries = 4, delay = 1000) {
         }
     }
 }
+function updateDebugInfo(message) {
+    const debugInfo = document.querySelector('#debugInfo');
+    if (debugInfo) {
+        // Add timestamp and message
+        const timestamp = new Date().toLocaleTimeString();
+        const debugMessage = `[${timestamp}] ${message}`;
+
+        // Keep only last 5 messages to avoid overflow
+        const currentContent = debugInfo.textContent;
+        const messages = currentContent.split('\n').filter(msg => msg.trim() !== '');
+        messages.push(debugMessage);
+
+        if (messages.length > 5) {
+            messages.shift(); // Remove oldest message
+        }
+
+        debugInfo.textContent = messages.join('\n');
+    }
+}
+
+// Initialize debug info
+updateDebugInfo('Debug started - click More Episodes');
 async function initializeApp(optionData) {
     // Add cleanup at the very beginning of initialization
     cleanupCompletedMovies();
@@ -1709,10 +1753,11 @@ async function initializeApp(optionData) {
                 {
                     name: 'adCountdown',
                     html: `
-                        <div id="adCountdownOverlay" style="display: none; position: absolute; bottom: 250px; right: 20px; pointer-events: none;">
-                            <div class="action-button-wrapper" style="width: auto; min-width: 200px;">
-                                <button class="dynamic-action-button" style="opacity: 0.6; cursor: not-allowed; font-size: 1rem; padding: 10px 20px; background: rgba(0,0,0,0.8); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; font-weight: bold;" id="persistentAdCountdown">
-                                    <span id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza mu" : "Ad in"} 10</span>
+                        <div id="adCountdownOverlay" style="display: none; position: absolute; bottom: 80px; left: 20px; pointer-events: none; z-index: 1000;">
+                            <div class="action-button-wrapper" style="width: auto; min-width: 300px; max-width: 400px;">
+                                <button class="dynamic-action-button" style="opacity: 0.8; cursor: not-allowed; font-size: 0.9rem; padding: 8px 16px; background: rgba(0,0,0,0.9); border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; color: white; font-weight: normal; text-align: left;">
+                                    <div id="persistentCountdownText">${optionData.language != "en" ? "Kwamamaza mu" : "Ad in"} 10</div>
+                                    <div id="debugInfo" style="font-size: 0.7rem; margin-top: 5px; color: #1fdf67; font-family: monospace;"></div>
                                 </button>
                             </div>
                         </div>
@@ -1720,11 +1765,12 @@ async function initializeApp(optionData) {
                     style: {
                         position: 'absolute',
                         bottom: '80px',
-                        right: '20px',
+                        left: '20px', // Changed from right to left
                         width: 'auto',
                         height: 'auto',
                         pointerEvents: 'none',
-                        display: 'none'
+                        display: 'none',
+                        zIndex: 1000
                     }
                 },
                 { name: 'playback', html: controlsPlayAndPauseElement, style: { width: '100%', height: '65px', alignSelf: 'center', boxSizing: 'border-box', opacity: "1", transition: "opacity 3s ease-in-out", position: 'absolute', pointerEvents: 'auto', top: '45%' } },
@@ -1911,9 +1957,25 @@ async function initializeApp(optionData) {
             };
             // --- Episodes Overlay Setup ---
             const setupEpisodesOverlay = (ed) => {
+                updateDebugInfo('setupEpisodesOverlay called');
+
+                if (ed) {
+                    updateDebugInfo(`Event type: ${ed.type}, target: ${ed.target?.id || ed.target?.className}`);
+                }
+                updateDebugInfo(`Episodes layer found: ${!!episodesLayer}`);
+                updateDebugInfo(`Episodes overlay found: ${!!episodesOverlay}`);
+
+                if (!episodesLayer || !episodesOverlay) {
+                    updateDebugInfo('ERROR: Episodes elements not found');
+                    return;
+                }
                 const artBottom = document.querySelector('.art-bottom');
                 const closeEpisodesBtn = episodesLayer.querySelector('#closeEpisodesOverlay');
                 const episodesList = episodesLayer.querySelector('#episodesList');
+                updateDebugInfo(`Art bottom found: ${!!artBottom}`);
+                updateDebugInfo(`Close button found: ${!!closeEpisodesBtn}`);
+                updateDebugInfo(`Episodes list found: ${!!episodesList}`);
+
                 const scrollLeftBtn = episodesLayer.querySelector('#scrollLeft');
                 const scrollRightBtn = episodesLayer.querySelector('#scrollRight');
                 const openSeasonsBtn = episodesLayer.querySelector('#openSeasonsButton');
@@ -2069,11 +2131,13 @@ async function initializeApp(optionData) {
                 populateEpisodes(selectedSeasonIndex);
                 if (artBottom) artBottom.style.display = 'none';
                 function handleMoreEpisodesClick(e) {
+                    updateDebugInfo('handleMoreEpisodesClick called');
                     e.preventDefault();
                     e.stopPropagation();
 
                     if (episodesLayer && episodesOverlay) {
                         // Ensure the layer and overlay are visible (flex display)
+                        updateDebugInfo('Showing episodes overlay');
                         episodesLayer.style.display = 'flex';
                         episodesOverlay.style.display = 'flex'; // Or 'block', ensure it's not 'none'
                         episodesOverlay.classList.add('visible'); // Add class if needed for state
@@ -2091,14 +2155,18 @@ async function initializeApp(optionData) {
 
                         // Apply final state for fade in
                         episodesOverlay.style.opacity = '1';
+                        updateDebugInfo('Overlay fade in started');
 
                         // Optional: Scroll active card into view after fade-in (adjust delay if needed)
                         setTimeout(() => {
                             const activeCard = episodesOverlay.querySelector('#episodesList .episode-card.active');
                             if (activeCard) {
                                 activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                                updateDebugInfo('Active card scrolled into view');
                             }
                         }, 300); // Match CSS transition duration or adjust
+                    } else {
+                        updateDebugInfo('ERROR: Could not find overlay elements');
                     }
                 }
                 handleMoreEpisodesClick(ed);
@@ -2303,9 +2371,27 @@ async function initializeApp(optionData) {
                     if (moreEpisodesCard) {
                         moreEpisodesCard.removeEventListener('click', setupEpisodesOverlay);
                         moreEpisodesCard.addEventListener('click', setupEpisodesOverlay);
+                        moreEpisodesCard.addEventListener('click', function (e) {
+                            updateDebugInfo('More episodes card CLICKED');
+                            setupEpisodesOverlay(e);
+                        });
+                        moreEpisodesCard.addEventListener('touchend', function (e) {
+                            updateDebugInfo('More episodes card TOUCHED');
+                            setupEpisodesOverlay(e);
+                        });
+                        moreEpisodesCard.setAttribute('tabindex', '0');
+                        moreEpisodesCard.addEventListener('keydown', function (e) {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                updateDebugInfo('More episodes card KEYPRESS');
+                                e.preventDefault();
+                                setupEpisodesOverlay(e);
+                            }
+                        });
                         moreEpisodesCard.style.border = '1px solid rgba(255, 255, 255, 0.1)';
                         moreEpisodesCard.style.borderImage = '';
                         moreEpisodesContainer.style.display = 'block';
+
+                        updateDebugInfo('More episodes card setup complete');
                     }
                 }
             }
@@ -2465,6 +2551,7 @@ async function initializeApp(optionData) {
                 if (adCountdownOverlay) {
                     adCountdownOverlay.style.display = 'flex';
                     art.layers.adCountdown.style.display = 'block';
+                    updateDebugInfo('Ad countdown shown');
                 }
                 // === END CHANGE 1 ===
 
@@ -2499,6 +2586,7 @@ async function initializeApp(optionData) {
                         if (adCountdownOverlay) {
                             adCountdownOverlay.style.display = 'none';
                             art.layers.adCountdown.style.display = 'none';
+                            updateDebugInfo('Ad countdown hidden');
                         }
 
                         // Play the ad after countdown
@@ -2616,6 +2704,7 @@ async function initializeApp(optionData) {
                     if (adCountdownOverlay) {
                         adCountdownOverlay.style.display = 'none';
                         art.layers.adCountdown.style.display = 'none';
+                        updateDebugInfo('Ad countdown hidden');
                     }
                 }
                 // === END NEW ===
